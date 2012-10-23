@@ -5,11 +5,15 @@
 #include <stdio.h>
 #include <string.h>
 #include "Link.h"
+#include <math.h>
 
 typedef struct {
+	unsigned char C, T_Size, L_Size;
     unsigned long long int V_Size;
+	unsigned char T_Name, L_Name;
     char V_Name[MAX_FILENAME];
-    unsigned char C, T_Size, L_Size, T_Name, L_Name;
+    unsigned char T_Pkg, L_Pkg;
+	unsigned long long int V_Pkg;
 } controlPackage;
 
 
@@ -21,10 +25,9 @@ typedef struct {
 typedef struct {
     int status;
     int fileDescriptor;
-    
     FILE* pFile;
     char* filename;
-    unsigned long long int originalFileSyze; /* 64 bits */
+    unsigned long long int originalFileSize; /* 64 bits */
     unsigned char* buff;
     controlPackage ctrlPkg;
 } applicationLayer;
@@ -32,7 +35,7 @@ typedef struct {
 enum statusFlags {TRANSMITTER, RECEIVER};
 enum applicationLayerErrors {INEXISTENT_FILE = 61, FSEEK_ERROR};
 enum applicationLayerPackageC {C_DATA = 0, C_START, C_END};
-enum applicationLayerPackageT {T_SIZE = 0, T_NAME};
+enum applicationLayerPackageT {T_SIZE = 0, T_NAME, T_PKG};
 
 applicationLayer* getNewApplicationLayer();
 

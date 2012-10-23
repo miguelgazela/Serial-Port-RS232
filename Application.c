@@ -37,7 +37,7 @@ int openFile(applicationLayer* app, char* filename) {
     if(fseek(app->pFile, 0, SEEK_END) != 0)
         return FSEEK_ERROR;
     
-    app->originalFileSyze = ftell(app->pFile);
+    app->originalFileSize = ftell(app->pFile);
     rewind(app->pFile);
     
     app->filename = filename;
@@ -45,7 +45,8 @@ int openFile(applicationLayer* app, char* filename) {
 }
 
 int sendFile(applicationLayer* app) {
-    int remaining;
+    unsigned long long int remainingFileBytes, packetsSent = 0;
+    int result;
     dataPackage* fileData;
     
     /* open the link layer */
@@ -63,24 +64,61 @@ int sendFile(applicationLayer* app) {
     }
     
     /* send file data packages */
+    remainingFileBytes = app->originalFileSize;
     
-    fileData = (dataPackage*)malloc(sizeof(dataPackage));
+    printf("Original remaining file bytes %lld\n", remainingFileBytes); /* TODO: remove */
     
-    if(app->originalFileSyze <= 256) { /* it only needs one package */
-        remaining = app->originalFileSyze;
+    while (remainingFileBytes > 0) { /* while there's still data to send */
+        fileData = (dataPackage*)malloc(sizeof(dataPackage));
         
-        while(TRUE) {
-            remaining -= fread(&fileData->dataField[app->originalFileSyze-remaining], 1, remaining, app->pFile);
+        fileData->C = C_DATA;
+        fileData->N = (unsigned char)packetsSent % 255;
+        
+        if(remainingFileBytes > MAX_SIZE_DATAFIELD) {
             
-            if (remaining == 0)
-                break;
+            fileData->L1 = 1; fileData->L2 = 0;
+            
+            while (TRUE) {
+                result = fread(fileData->dataField, 1, MAX_SIZE_DATAFIELD, app->pFile);
+                
+                if(result == MAX_SIZE_DATAFIELD) /* successfully read all bytes */ {
+                    remainingFileBytes -= MAX_SIZE_DATAFIELD;
+                    break;
+                }
+                else {
+                    perror("Error reading data from file");
+                    exit(-1);
+                }
+            }
         }
+        else {
+            fileData->L1 = 7; fileData->L2 = 7; /* TODO: que é que se mete aqui neste caso?? */
+            
+            while (TRUE) {
+                result = fread(fileData->dataField, 1, remainingFileBytes, app->pFile);
+                if(result == remainingFileBytes) {
+                    remainingFileBytes -= result;
+                    break;
+                }
+                else {
+                    perror("Error reading data from file");
+                    exit(-1);
+                }
+            }
+        }
+        
+        printf("Updated remaining file bytes %lld\nPackage number: %lld\n", remainingFileBytes, packetsSent); /* TODO: remove */
+        
+        result = llwrite(app->fileDescriptor, fileData, sizeof(dataPackage));
+        
+        if(result < 0) { /* TODO: deve sair aqui? Ou tbm deve fazer tentativas??? */
+            printf("Error sending a data package.\n");
+            exit(-1);
+        }
+        
+        packetsSent++;
+        free(fileData);
     }
-    
-    /* EXPERIMENTAR ISTO E DEPOIS APAGAR */
-    for(result = 0; result < app->originalFileSyze; result++)
-        printf("CHAR number: %d value: %x\n", result, fileData[result]);
-    
     
     /* send end control package */
     app->ctrlPkg.C = C_END;
@@ -100,12 +138,26 @@ void setControlPackage(applicationLayer* app) {
     
     /* file size TLV */
     app->ctrlPkg.T_Size = T_SIZE;
-    app->ctrlPkg.L_Size = sizeof(unsigned long long int); /* size_t = 8 */
-    app->ctrlPkg.V_Size = app->originalFileSyze;
+    app->ctrlPkg.L_Size = (unsigned char)sizeof(unsigned long long int); /* size_t = 8 */
+    app->ctrlPkg.V_Size = app->originalFileSize;
     
     /* filename TLV */
     app->ctrlPkg.T_Name = T_NAME;
-    app->ctrlPkg.L_Name = (unsigned char)strlen(app->filename);
+	app->ctrlPkg.L_Name = MAX_FILENAME;
     memcpy(app->ctrlPkg.V_Name, app->filename, strlen(app->filename));
+    
+    /* number of data packages needed */
+    app->ctrlPkg.T_Pkg = T_PKG;
+    app->ctrlPkg.L_Pkg = (unsigned char)sizeof(unsigned long long int);
+    
+	if(app->originalFileSize < MAX_SIZE_DATAFIELD) {
+		app->ctrlPkg.V_Pkg = 1;
+	}
+	else {
+		if((app->originalFileSize % MAX_SIZE_DATAFIELD) == 0)
+			app->ctrlPkg.V_Pkg = (unsigned long long int)app->originalFileSize/MAX_SIZE_DATAFIELD;
+		else
+			app->ctrlPkg.V_Pkg = (unsigned long long int)ceil(app->originalFileSize/MAX_SIZE_DATAFIELD);
+	}
 }
 

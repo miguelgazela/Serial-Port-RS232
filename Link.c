@@ -260,12 +260,6 @@ int llclose(int fd) {
     return close(fd);
 }
 
-
-
-
-
-
-
 int llwrite(int fd, void* buffer, int length)
 {
     newtio.c_oflag = OPOST;
