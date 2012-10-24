@@ -8,6 +8,7 @@
 
 #define MAX_FILENAME 128
 #define MAX_SIZE_DATAFIELD 256
+#define MAX_SIZE_PACKAGE_FIELD 260
 
 #define OK 1
 

@@ -23,8 +23,15 @@
 #define C_DISC 0x0B
 #define RR 0x05
 #define REJ 0x01
+#define ESC 0x7D
 
-
+typedef struct {
+    unsigned char F_BEG, df_A, df_C;
+    unsigned char BCC1[2];
+    unsigned char packageField[2*MAX_SIZE_PACKAGE_FIELD];
+    unsigned char BCC2[2];
+    unsigned char F_END;
+}dataFrame;
 
 typedef struct {
     char port[20];
@@ -42,7 +49,7 @@ void createNewLinkLayer(char* portname);
 
 int llopen();
 int llclose(int fd);
-int llwrite(int fd, void* buffer, int length);
-int llread(int fd, void* buffer, int length);
+int llwrite(int fd, unsigned char* buffer, int length);
+int llread(int fd, unsigned char* buffer, int length);
 
 #endif

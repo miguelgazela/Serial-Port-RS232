@@ -9,6 +9,9 @@ unsigned char UA_ACK_1[] = {FLAG, A, RR | 0x20, (A ^ (RR | 0x20)), FLAG};
 unsigned char UA_REJ_0[] = {FLAG, A, REJ, (A ^ REJ), FLAG};
 unsigned char UA_REJ_1[] = {FLAG, A, REJ | 0x20, (A ^ (REJ | 0x20)), FLAG};
 
+void prepareFrameToSend(unsigned char* buffer, int length);
+
+dataFrame frameToSend;
 
 void createNewLinkLayer(char* portname) {
     /* alocate memory */
@@ -25,6 +28,78 @@ void createNewLinkLayer(char* portname) {
     /*(*lLayerPtr).baudrate = BAUDRATE;*/ /*TODO*/
     LLayer->timeout = TIMEOUT;
     LLayer->sequenceNumber = 0;
+}
+
+void prepareFrameToSend(unsigned char* buffer, int length) {
+    int bufferIterator,packageFieldIterator;
+    unsigned char BCC1,BCC2;
+    
+    frameToSend.F_BEG = FLAG;
+    frameToSend.F_END = FLAG;
+    frameToSend.df_A = A;
+    frameToSend.df_C = (LLayer->sequenceNumber << 1);
+    
+    BCC1 = (frameToSend.df_A ^ frameToSend.df_C);
+    
+    if(BCC1 == FLAG) { //STUFFING BCC1
+    	frameToSend.BCC1[0] = ESC;
+    	frameToSend.BCC1[1] = 0x5E;
+    }
+    else if (BCC1 == ESC) {
+    	frameToSend.BCC1[0] = ESC;
+    	frameToSend.BCC1[1] = 0x5D;
+    }
+    else {
+    	frameToSend.BCC1[0] = BCC1;
+    }
+    
+    BCC2 = frameToSend.packageField[0];
+    for(bufferIterator = 1; bufferIterator < length; bufferIterator++)
+        BCC2 ^= frameToSend.packageField[bufferIterator];
+    
+    if(BCC2 == FLAG) { //STUFFING BCC2
+    	frameToSend.BCC2[0] = ESC;
+    	frameToSend.BCC2[1] = 0x5E;
+    }
+    else if (BCC2 == ESC) {
+    	frameToSend.BCC2[0] = ESC;
+    	frameToSend.BCC2[1] = 0x5D;
+    }
+    else {
+    	frameToSend.BCC2[0] = BCC2;
+    }
+    
+    memcpy(frameToSend.packageField, buffer, length);
+    
+    //STUFFING
+    
+    /* TODO:
+     * Se relevante, arranjar uma forma de não enviar sempre o dobro dos bytes por causa do stuffing,
+     * indicando no cabeçalho o tamanho em bytes do pacote de dados após stuffing. Sabendo isso, depois
+     * o emissor não precisaria de enviar sempre 2*MAX_SIZE_PACKAGE_FIELD e o receptor poderia alocar apenas o espaço necessário.
+     * Talvez seja pouco importante para efeitos deste trabalho.
+     * */
+    
+    for(bufferIterator = 0, packageFieldIterator = 0; bufferIterator < length; bufferIterator++)
+    {
+    	if(buffer[bufferIterator] == FLAG)
+    	{
+    		frameToSend.packageField[packageFieldIterator] = ESC;
+    		frameToSend.packageField[packageFieldIterator+1] = 0x5E;
+    		packageFieldIterator += 2;
+    	}
+    	else if(buffer[bufferIterator] == ESC)
+    	{
+    		frameToSend.packageField[packageFieldIterator] = ESC;
+    		frameToSend.packageField[packageFieldIterator+1] = 0x5D;
+    		packageFieldIterator += 2;
+    	}
+    	else
+    	{
+    		frameToSend.packageField[packageFieldIterator] = buffer[bufferIterator];
+    		packageFieldIterator++;
+    	}
+    }
 }
 
 int llopen() {
@@ -46,10 +121,12 @@ int llopen() {
 		return -1;
 	}
     
-    if (tcgetattr(fd,&oldtio) == -1) { /* save current port settings */
+    /*
+    if (tcgetattr(fd,&oldtio) == -1) { 
         perror("tcgetattr");
         return -1;
     }
+     */
     
     bzero(&newtio, sizeof(newtio));
     newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
@@ -66,10 +143,12 @@ int llopen() {
      */
     tcflush(fd, TCIOFLUSH);
     
+    /*
     if (tcsetattr(fd,TCSANOW,&newtio) == -1) {
         perror("tcsetattr");
         return -1;
     }
+     */
     
     do {
 		setAttempts = MAX_ATTEMPTS;
@@ -89,7 +168,7 @@ int llopen() {
 		}
 		
 		newtio.c_oflag = 0;
-		tcsetattr(fd,TCSANOW,&newtio);
+		/*tcsetattr(fd,TCSANOW,&newtio);*/
 		
 		remaining = 5;
 		
@@ -260,15 +339,31 @@ int llclose(int fd) {
     return close(fd);
 }
 
-int llwrite(int fd, void* buffer, int length)
-{
-    newtio.c_oflag = OPOST;
-    tcsetattr(fd, TCSANOW, &newtio);
+int llwrite(int fd, unsigned char* buffer, int length) {
+    int answer_result, counter, bytesWritten, attempts = MAX_ATTEMPTS, validAnswer = FALSE;
+    unsigned char UA_ACK_RECEIVED[5], UA_ACK_EXPECTED[5];
     
-    return (write(fd, buffer, length));
+    FILE* oFile = fopen("enviado", "ab"); /* TODO: remover */
+    
+    if(LLayer->sequenceNumber == 0)
+        memcpy(UA_ACK_EXPECTED, UA_ACK_1, 5); /* waits for the next frame */
+	else
+        memcpy(UA_ACK_EXPECTED, UA_ACK_0, 5);
+    
+    prepareFrameToSend(buffer, length);
+    
+    newtio.c_oflag = OPOST;
+    /*tcsetattr(fd, TCSANOW, &newtio);*/
+    
+    fwrite(&frameToSend, 1, sizeof(dataFrame), oFile); /* TODO: remover */
+    fclose(oFile);
+    
+    printf("SIZE dataframe: %d\n", sizeof(dataFrame));
+    
+    return length;
 }
 
-int llread(int fd, void* buffer, int length)
+int llread(int fd, unsigned char* buffer, int length)
 {
     int remaining=length, select_result;
     struct timeval Timeout;

@@ -46,7 +46,7 @@ int openFile(applicationLayer* app, char* filename) {
 
 int sendFile(applicationLayer* app) {
     unsigned long long int remainingFileBytes, packetsSent = 0;
-    int result;
+    int remaining, result;
     dataPackage* fileData;
     
     /* open the link layer */
@@ -74,44 +74,39 @@ int sendFile(applicationLayer* app) {
         fileData->C = C_DATA;
         fileData->N = (unsigned char)packetsSent % 255;
         
-        if(remainingFileBytes > MAX_SIZE_DATAFIELD) {
+        if(remainingFileBytes >= MAX_SIZE_DATAFIELD) {
             
-            fileData->L1 = 1; fileData->L2 = 0;
+            fileData->L1 = 0; fileData->L2 = 1;
+            remaining = MAX_SIZE_DATAFIELD;
             
             while (TRUE) {
-                result = fread(fileData->dataField, 1, MAX_SIZE_DATAFIELD, app->pFile);
+                remaining -= fread(&fileData->dataField[MAX_SIZE_DATAFIELD-remaining], 1, remaining, app->pFile);
                 
-                if(result == MAX_SIZE_DATAFIELD) /* successfully read all bytes */ {
+                if(remaining == 0) /* successfully read all bytes */ {
                     remainingFileBytes -= MAX_SIZE_DATAFIELD;
                     break;
-                }
-                else {
-                    perror("Error reading data from file");
-                    exit(-1);
                 }
             }
         }
         else {
-            fileData->L1 = 7; fileData->L2 = 7; /* TODO: que é que se mete aqui neste caso?? */
+            fileData->L1 = remainingFileBytes; fileData->L2 = 0;
+            remaining = remainingFileBytes;
             
             while (TRUE) {
-                result = fread(fileData->dataField, 1, remainingFileBytes, app->pFile);
-                if(result == remainingFileBytes) {
-                    remainingFileBytes -= result;
+                remaining -= fread(&fileData->dataField[remainingFileBytes-remaining], 1, remaining, app->pFile);
+                
+                if(remaining == 0) {
+                    remainingFileBytes = 0;
                     break;
-                }
-                else {
-                    perror("Error reading data from file");
-                    exit(-1);
                 }
             }
         }
         
-        printf("Updated remaining file bytes %lld\nPackage number: %lld\n", remainingFileBytes, packetsSent); /* TODO: remove */
+        printf("Updated remaining file bytes %lld\nPackage number: %lld\n", remainingFileBytes, packetsSent);
         
         result = llwrite(app->fileDescriptor, fileData, sizeof(dataPackage));
         
-        if(result < 0) { /* TODO: deve sair aqui? Ou tbm deve fazer tentativas??? */
+        if(result == -1) { /* TODO: deve sair aqui? Ou tbm deve fazer tentativas??? */
             printf("Error sending a data package.\n");
             exit(-1);
         }
@@ -146,18 +141,19 @@ void setControlPackage(applicationLayer* app) {
 	app->ctrlPkg.L_Name = MAX_FILENAME;
     memcpy(app->ctrlPkg.V_Name, app->filename, strlen(app->filename));
     
-    /* number of data packages needed */
+    /* number of data packages needed in ideal conditions */
     app->ctrlPkg.T_Pkg = T_PKG;
     app->ctrlPkg.L_Pkg = (unsigned char)sizeof(unsigned long long int);
     
-	if(app->originalFileSize < MAX_SIZE_DATAFIELD) {
-		app->ctrlPkg.V_Pkg = 1;
-	}
-	else {
-		if((app->originalFileSize % MAX_SIZE_DATAFIELD) == 0)
-			app->ctrlPkg.V_Pkg = (unsigned long long int)app->originalFileSize/MAX_SIZE_DATAFIELD;
-		else
-			app->ctrlPkg.V_Pkg = (unsigned long long int)ceil(app->originalFileSize/MAX_SIZE_DATAFIELD);
-	}
+    if((app->originalFileSize % MAX_SIZE_DATAFIELD) == 0)
+        app->ctrlPkg.V_Pkg = (unsigned long long int)app->originalFileSize/MAX_SIZE_DATAFIELD;
+    else
+        app->ctrlPkg.V_Pkg = (unsigned long long int)ceil((double)app->originalFileSize/MAX_SIZE_DATAFIELD);
+    
+    /* TODO: retirar isto */
+    printf("ESTADO DO CTRL PACKAGE\n");
+	printf("t_size: %d l_size: %d v_size: %lld t_name: %d l_name: %d v_name: %s t_pkg: %d l_pkg: %d v_pkg: %lld\n",
+           app->ctrlPkg.T_Size, app->ctrlPkg.L_Size, app->ctrlPkg.V_Size, app->ctrlPkg.T_Name, app->ctrlPkg.L_Name,
+           app->ctrlPkg.V_Name, app->ctrlPkg.T_Pkg, app->ctrlPkg.L_Pkg, app->ctrlPkg.V_Pkg);
 }
 
