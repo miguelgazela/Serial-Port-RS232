@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
     else if(functionResult == OK) {
-        printf("File %s opened with success. File size: %lld bytes.\n", app->filename, app->originalFileSize);
+        printf("\nFile %s opened with success. File size: %lld bytes.\n", app->filename, app->originalFileSize);
         
         /* create the link layer */
         createNewLinkLayer(argv[1]);

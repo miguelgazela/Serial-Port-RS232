@@ -1,5 +1,31 @@
 #include "Application.h"
 
+int DEBUG_APP = FALSE;
+
+inline void loadBar(unsigned long long int x, unsigned long long int n, int r, int w)
+{
+    // Only update r times.
+    if ( x % (n/r) != 0 ) return;
+    
+    // Calculuate the ratio of complete-to-incomplete.
+    float ratio = x/(float)n;
+    int   c     = ratio * w;
+    
+    // Show the percentage complete.
+    printf("%3d%% [", (int)(ratio*100) );
+    
+    // Show the load bar.
+    for (x = 0; x<c; x++)
+        printf("=");
+    
+    for (x = c; x<w; x++)
+        printf(" ");
+    
+    // ANSI Control codes to go back to the
+    // previous line and clear it.
+    printf("]\n\033[F\033[J");
+}
+
 applicationLayer* getNewApplicationLayer() {
     /* allocate memory */
     applicationLayer* appPtr = (applicationLayer*)malloc(sizeof(applicationLayer));
@@ -50,13 +76,23 @@ int sendFile(applicationLayer* app) {
     dataPackage* fileData;
     
     /* open the link layer */
+    if(LLayer == NULL) {
+        printf("There isn't an active link layer. File cannot be sent.");
+        exit(-1);
+    }
+    
     if((app->fileDescriptor = llopen()) < 0)
         exit(-1);
     
     /* send start control package */
     setControlPackage(app);
     
-    result = llwrite(app->fileDescriptor, &app->ctrlPkg, sizeof(controlPackage));
+    printf("\nSending file '%s' with size: %lld bytes\n", app->filename, app->originalFileSize);
+    
+    if(DEBUG_APP)
+        printf("\nPackage control START\n");
+    
+    result = llwrite(app->fileDescriptor, (unsigned char*)&app->ctrlPkg, sizeof(controlPackage));
     
     if (result < 0) {
         perror("Package control delivery");
@@ -66,13 +102,18 @@ int sendFile(applicationLayer* app) {
     /* send file data packages */
     remainingFileBytes = app->originalFileSize;
     
-    printf("Original remaining file bytes %lld\n", remainingFileBytes); /* TODO: remove */
-    
     while (remainingFileBytes > 0) { /* while there's still data to send */
-        fileData = (dataPackage*)malloc(sizeof(dataPackage));
         
+        fileData = (dataPackage*)malloc(sizeof(dataPackage));
         fileData->C = C_DATA;
         fileData->N = (unsigned char)packetsSent % 255;
+        
+        if(!DEBUG_APP) {
+            if(app->ctrlPkg.V_Pkg < 50)
+                loadBar(packetsSent, app->ctrlPkg.V_Pkg, app->ctrlPkg.V_Pkg, 70);
+            else
+                loadBar(packetsSent, app->ctrlPkg.V_Pkg, 50, 70);
+        }
         
         if(remainingFileBytes >= MAX_SIZE_DATAFIELD) {
             
@@ -102,11 +143,12 @@ int sendFile(applicationLayer* app) {
             }
         }
         
-        printf("Updated remaining file bytes %lld\nPackage number: %lld\n", remainingFileBytes, packetsSent);
+        if(DEBUG_APP)
+            printf("Package number: %lld\nRemaining bytes to be sent: %lld\n", packetsSent, remainingFileBytes);
         
-        result = llwrite(app->fileDescriptor, fileData, sizeof(dataPackage));
+        result = llwrite(app->fileDescriptor, (unsigned char*)fileData, sizeof(dataPackage));
         
-        if(result == -1) { /* TODO: deve sair aqui? Ou tbm deve fazer tentativas??? */
+        if(result == -1) {
             printf("Error sending a data package.\n");
             exit(-1);
         }
@@ -118,12 +160,18 @@ int sendFile(applicationLayer* app) {
     /* send end control package */
     app->ctrlPkg.C = C_END;
     
-    result = llwrite(app->fileDescriptor, &app->ctrlPkg, sizeof(controlPackage));
+    if(DEBUG_APP)
+        printf("Package control END\n");
+    
+    result = llwrite(app->fileDescriptor, (unsigned char*)&app->ctrlPkg, sizeof(controlPackage));
     
     if (result < 0) {
         perror("Package control delivery");
         exit(-1);
     }
+    
+    printf("Total bytes sent (including package and frame headers): %lld\n", LLayer->totalBytesSent);
+    printf("Total packages sent (including control start & end): %lld\n\n", packetsSent+2);
 
     return OK;
 }
@@ -150,10 +198,11 @@ void setControlPackage(applicationLayer* app) {
     else
         app->ctrlPkg.V_Pkg = (unsigned long long int)ceil((double)app->originalFileSize/MAX_SIZE_DATAFIELD);
     
-    /* TODO: retirar isto */
-    printf("ESTADO DO CTRL PACKAGE\n");
-	printf("t_size: %d l_size: %d v_size: %lld t_name: %d l_name: %d v_name: %s t_pkg: %d l_pkg: %d v_pkg: %lld\n",
+    if(DEBUG_APP) {
+        printf("Control Package: Start\n");
+        printf("t_size: %d\tl_size: %d\tv_size: %lld\nt_name: %d\tl_name: %d\tv_name: %s\nt_pkg: %d\tl_pkg: %d\tv_pkg: %lld\n",
            app->ctrlPkg.T_Size, app->ctrlPkg.L_Size, app->ctrlPkg.V_Size, app->ctrlPkg.T_Name, app->ctrlPkg.L_Name,
            app->ctrlPkg.V_Name, app->ctrlPkg.T_Pkg, app->ctrlPkg.L_Pkg, app->ctrlPkg.V_Pkg);
+    }
 }
 

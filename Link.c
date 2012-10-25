@@ -1,5 +1,7 @@
 #include "Link.h"
 
+int DEBUG_LINK = FALSE;
+
 unsigned char SET_COMMAND[] = {FLAG, A, C_SET, (A ^ C_SET), FLAG};
 unsigned char UA_COMMAND[] = {FLAG, A, C_UA, (A ^ C_UA), FLAG};
 unsigned char DISC_COMMAND[] = {FLAG, A, C_DISC, (A ^ C_DISC), FLAG};
@@ -11,7 +13,7 @@ unsigned char UA_REJ_1[] = {FLAG, A, REJ | 0x20, (A ^ (REJ | 0x20)), FLAG};
 
 void prepareFrameToSend(unsigned char* buffer, int length);
 
-dataFrame frameToSend;
+dataFrame* frameToSend;
 
 void createNewLinkLayer(char* portname) {
     /* alocate memory */
@@ -28,77 +30,102 @@ void createNewLinkLayer(char* portname) {
     /*(*lLayerPtr).baudrate = BAUDRATE;*/ /*TODO*/
     LLayer->timeout = TIMEOUT;
     LLayer->sequenceNumber = 0;
+    LLayer->totalBytesSent = 0;
 }
 
 void prepareFrameToSend(unsigned char* buffer, int length) {
-    int bufferIterator,packageFieldIterator;
+    unsigned int bufferIterator,packageFieldIterator, bytesStuffed = 0, extraPackageFieldSize;
     unsigned char BCC1,BCC2;
+    unsigned char tempBCC1[2], tempBCC2[2];
     
-    frameToSend.F_BEG = FLAG;
-    frameToSend.F_END = FLAG;
-    frameToSend.df_A = A;
-    frameToSend.df_C = (LLayer->sequenceNumber << 1);
+    BCC1 = (A ^ (LLayer->sequenceNumber << 1));
     
-    BCC1 = (frameToSend.df_A ^ frameToSend.df_C);
+    /* STUFFING BCC1 */
     
-    if(BCC1 == FLAG) { //STUFFING BCC1
-    	frameToSend.BCC1[0] = ESC;
-    	frameToSend.BCC1[1] = 0x5E;
+    if(BCC1 == FLAG) {
+    	tempBCC1[0] = ESC;
+    	tempBCC1[1] = 0x5E;
     }
     else if (BCC1 == ESC) {
-    	frameToSend.BCC1[0] = ESC;
-    	frameToSend.BCC1[1] = 0x5D;
+    	tempBCC1[0] = ESC;
+    	tempBCC1[1] = 0x5D;
     }
     else {
-    	frameToSend.BCC1[0] = BCC1;
+    	tempBCC1[0] = BCC1;
     }
     
-    BCC2 = frameToSend.packageField[0];
-    for(bufferIterator = 1; bufferIterator < length; bufferIterator++)
-        BCC2 ^= frameToSend.packageField[bufferIterator];
+    /* STUFFING BCC2 */
     
-    if(BCC2 == FLAG) { //STUFFING BCC2
-    	frameToSend.BCC2[0] = ESC;
-    	frameToSend.BCC2[1] = 0x5E;
+    BCC2 = buffer[0];
+    for(bufferIterator = 1; bufferIterator < length; bufferIterator++)
+        BCC2 ^= buffer[bufferIterator];
+    
+    if(BCC2 == FLAG) {
+    	tempBCC2[0] = ESC;
+    	tempBCC2[1] = 0x5E;
     }
     else if (BCC2 == ESC) {
-    	frameToSend.BCC2[0] = ESC;
-    	frameToSend.BCC2[1] = 0x5D;
+    	tempBCC2[0] = ESC;
+    	tempBCC2[1] = 0x5D;
     }
     else {
-    	frameToSend.BCC2[0] = BCC2;
+    	tempBCC2[0] = BCC2;
     }
     
-    memcpy(frameToSend.packageField, buffer, length);
+    /* calculate how many bytes will need to be stuffed */
+    for(bufferIterator = 0; bufferIterator < length; bufferIterator++)
+        if (buffer[bufferIterator] == FLAG || buffer[bufferIterator] == ESC)
+            bytesStuffed++;
+    
+    if(DEBUG_LINK)
+        printf("Number of stuffed bytes: %d\n", bytesStuffed);
+    
+    extraPackageFieldSize = (length - 1) + bytesStuffed + 3; /* 3 for the BCC2[2] and the FLAG at the end*/
+    
+    if(DEBUG_LINK)
+        printf("Extra package field size: %d\n", extraPackageFieldSize);
+    
+    frameToSend = (dataFrame*)malloc(sizeof(dataFrame) + extraPackageFieldSize);
+    
+    /* set frame header */
+    frameToSend->F_BEG = FLAG;
+    frameToSend->df_A = A;
+    frameToSend->df_C = (LLayer->sequenceNumber << 1);
+    frameToSend->extraPackageFieldSize = extraPackageFieldSize;
+    memcpy(frameToSend->BCC1, tempBCC1, 2);
+    
+    memcpy(frameToSend->packageField, buffer, length);
     
     //STUFFING
-    
-    /* TODO:
-     * Se relevante, arranjar uma forma de não enviar sempre o dobro dos bytes por causa do stuffing,
-     * indicando no cabeçalho o tamanho em bytes do pacote de dados após stuffing. Sabendo isso, depois
-     * o emissor não precisaria de enviar sempre 2*MAX_SIZE_PACKAGE_FIELD e o receptor poderia alocar apenas o espaço necessário.
-     * Talvez seja pouco importante para efeitos deste trabalho.
-     * */
     
     for(bufferIterator = 0, packageFieldIterator = 0; bufferIterator < length; bufferIterator++)
     {
     	if(buffer[bufferIterator] == FLAG)
     	{
-    		frameToSend.packageField[packageFieldIterator] = ESC;
-    		frameToSend.packageField[packageFieldIterator+1] = 0x5E;
+    		frameToSend->packageField[packageFieldIterator] = ESC;
+    		frameToSend->packageField[packageFieldIterator+1] = 0x5E;
     		packageFieldIterator += 2;
     	}
     	else if(buffer[bufferIterator] == ESC)
     	{
-    		frameToSend.packageField[packageFieldIterator] = ESC;
-    		frameToSend.packageField[packageFieldIterator+1] = 0x5D;
+    		frameToSend->packageField[packageFieldIterator] = ESC;
+    		frameToSend->packageField[packageFieldIterator+1] = 0x5D;
     		packageFieldIterator += 2;
     	}
     	else
     	{
-    		frameToSend.packageField[packageFieldIterator] = buffer[bufferIterator];
+    		frameToSend->packageField[packageFieldIterator] = buffer[bufferIterator];
     		packageFieldIterator++;
     	}
+    }
+    
+    /* set frame tail */
+    memcpy(&frameToSend->packageField[frameToSend->extraPackageFieldSize-2], tempBCC2, 2);
+    frameToSend->packageField[frameToSend->extraPackageFieldSize] = FLAG;
+    
+    if(DEBUG_LINK) {
+        printf("struct 'dataframe' size: %d bytes\tActual bytes sent: %d\n", (int)sizeof(dataFrame),  (int)sizeof(dataFrame) + extraPackageFieldSize);
+        printf("Confirm FLAG at package field tail: 0x%X\n\n",  frameToSend->packageField[frameToSend->extraPackageFieldSize]);
     }
 }
 
@@ -115,8 +142,7 @@ int llopen() {
      because we don't want to get killed if linenoise sends CTRL-C.
      */
     
-    fd = open(LLayer->port, O_RDWR | O_NOCTTY );
-    if (fd < 0) {
+    if ((fd = open(LLayer->port, O_RDWR | O_NOCTTY )) < 0) {
 		perror(LLayer->port);
 		return -1;
 	}
@@ -160,10 +186,12 @@ int llopen() {
 			setAttempts--;
 		}
 		
-		if(remaining == 0)
-			printf("SET_COMMAND SENT...\n");
+		if(remaining == 0) {
+            if(DEBUG_LINK)
+                printf("SET_COMMAND SENT!\n");
+        }
 		else {
-			printf("CAN'T SEND SET_COMMAND...\n");
+			printf("CAN'T SEND SET_COMMAND.\n");
 			return -1;
 		}
 		
@@ -213,7 +241,8 @@ int llopen() {
 		if(validUAresponse == TRUE)
 		{
 			validResponse = TRUE;
-			printf("Port %s is now open...\n", LLayer->port);
+            if(DEBUG_LINK)
+                printf("Port %s is open!\n", LLayer->port);
 		}
 		else
 			attempts--;
@@ -247,11 +276,13 @@ int llclose(int fd) {
 			DISCattempts--;
 		}
 		
-		if(remaining == 0)
-			printf("DISC_COMMAND SENT...\n");
+		if(remaining == 0) {
+            if(DEBUG_LINK)
+                printf("DISC_COMMAND SENT!\n");
+        }
 		else
 		{
-			printf("CAN'T SEND DISC_COMMAND...\n");
+			printf("CAN'T SEND DISC_COMMAND.\n");
 			return -1;
 		}
 		
@@ -299,7 +330,8 @@ int llclose(int fd) {
 		if(validDISCresponse == TRUE)
 		{
 			validResponse = TRUE;
-			printf("Port %s is now closing...\n", LLayer->port);
+            if(DEBUG_LINK)
+                printf("Port %s is closing.\n", LLayer->port);
 			
 			UAattempts = MAX_ATTEMPTS;
             remaining = 5;
@@ -312,11 +344,13 @@ int llclose(int fd) {
 				remaining -= write(fd, &UA_COMMAND[5-remaining], remaining);
 				UAattempts--;
 			}
-			if(remaining==0)
-				printf("UA_COMMAND SENT...\n");
+			if(remaining==0) {
+                if(DEBUG_LINK)
+                    printf("UA_COMMAND SENT!\n");
+            }
 			else
 			{
-				printf("CAN'T SEND UA_COMMAND...\n");
+				printf("CAN'T SEND UA_COMMAND.\n");
 				return -1;
 			}
 		}
@@ -327,7 +361,7 @@ int llclose(int fd) {
 	
 	if (validResponse == FALSE)
 	{
-		printf("Can't get a valid disconnection response...\n");
+		printf("Can't get a valid disconnection response.\n");
 		return -1;
 	}
 	
@@ -339,7 +373,7 @@ int llclose(int fd) {
     return close(fd);
 }
 
-int llwrite(int fd, unsigned char* buffer, int length) {
+int llwrite(int fd, unsigned char* applicationPackage, int length) {
     int answer_result, counter, bytesWritten, attempts = MAX_ATTEMPTS, validAnswer = FALSE;
     unsigned char UA_ACK_RECEIVED[5], UA_ACK_EXPECTED[5];
     
@@ -350,17 +384,70 @@ int llwrite(int fd, unsigned char* buffer, int length) {
 	else
         memcpy(UA_ACK_EXPECTED, UA_ACK_0, 5);
     
-    prepareFrameToSend(buffer, length);
+    prepareFrameToSend(applicationPackage, length);
     
     newtio.c_oflag = OPOST;
     /*tcsetattr(fd, TCSANOW, &newtio);*/
     
-    fwrite(&frameToSend, 1, sizeof(dataFrame), oFile); /* TODO: remover */
+    bytesWritten = fwrite(frameToSend, 1, sizeof(dataFrame) + frameToSend->extraPackageFieldSize, oFile); /* TODO: remover */
     fclose(oFile);
     
-    printf("SIZE dataframe: %d\n", sizeof(dataFrame));
+    /*
+    while(validAnswer==FALSE && attempts>0)
+	{
+		//ENVIAR
+        
+		bytesWritten = write(fd, frameToSend, sizeof(dataFrame) + frameToSend->extraPackageFieldSize);
+        
+		if(bytesWritten < sizeof(dataFrame) + frameToSend->extraPackageFieldSize)
+		{
+			validAnswer=FALSE;
+			attempts--;
+			continue;
+		}
+        
+		//VERIFICAR A RESPOSTA
+        
+		validAnswer=TRUE;
+        
+		answer_result=llread(fd,&UA_ACK_RECEIVED,5);
+        
+		if(answer_result==5)
+		{
+			counter = 0;
+            
+			while(counter < 5)
+			{
+				if(UA_ACK_RECEIVED[counter] != UA_ACK_EXPECTED[counter])
+				{
+					validAnswer = FALSE;
+					break;
+				}
+				counter++;
+			}
+		}
+		else
+		{
+			validAnswer=FALSE;
+		}
+        
+		attempts--;
+	}
+     */
     
-    return length;
+    LLayer->sequenceNumber = (LLayer->sequenceNumber + 1) % 2; // 0+1%2=1, 1+1%2=0
+    LLayer->totalBytesSent += bytesWritten; /* TODO: REMOVE */
+    free(frameToSend); /* TODO REMOVE */
+    return bytesWritten; /* TODO: Remove */
+    
+	if(validAnswer)
+	{
+		LLayer->sequenceNumber = (LLayer->sequenceNumber + 1) % 2; // 0+1%2=1, 1+1%2=0
+        LLayer->totalBytesSent += bytesWritten;
+		return length;
+	}
+	else
+		return -1;
 }
 
 int llread(int fd, unsigned char* buffer, int length)

@@ -16,7 +16,6 @@ typedef struct {
 	unsigned long long int V_Pkg;
 } controlPackage;
 
-
 typedef struct {
     unsigned char C, N, L2, L1;
     unsigned char dataField[MAX_SIZE_DATAFIELD];

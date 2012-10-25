@@ -27,11 +27,10 @@
 
 typedef struct {
     unsigned char F_BEG, df_A, df_C;
+    unsigned int extraPackageFieldSize; /* in bytes */
     unsigned char BCC1[2];
-    unsigned char packageField[2*MAX_SIZE_PACKAGE_FIELD];
-    unsigned char BCC2[2];
-    unsigned char F_END;
-}dataFrame;
+    unsigned char packageField[1];
+} dataFrame;
 
 typedef struct {
     char port[20];
@@ -39,7 +38,7 @@ typedef struct {
     unsigned int sequenceNumber;
     unsigned int timeout;
     unsigned int numTransmissions;
-    char frame[MAX_FRAME_SIZE];
+    unsigned long long int totalBytesSent;
 } linkLayer;
 
 linkLayer* LLayer;
@@ -49,7 +48,7 @@ void createNewLinkLayer(char* portname);
 
 int llopen();
 int llclose(int fd);
-int llwrite(int fd, unsigned char* buffer, int length);
+int llwrite(int fd, unsigned char* applicationPackage, int length);
 int llread(int fd, unsigned char* buffer, int length);
 
 #endif
