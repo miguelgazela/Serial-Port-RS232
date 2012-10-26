@@ -26,11 +26,13 @@ void createNewLinkLayer(char* portname) {
     
     memcpy(LLayer->port, portname, sizeof(char)*20);
     
-    LLayer->numTransmissions = MAX_ATTEMPTS;
+    LLayer->numMaxTransmissions = MAX_ATTEMPTS;
     /*(*lLayerPtr).baudrate = BAUDRATE;*/ /*TODO*/
     LLayer->timeout = TIMEOUT;
     LLayer->sequenceNumber = 0;
     LLayer->totalBytesSent = 0;
+    LLayer->numTimeouts = 0;
+    LLayer->numReceivedREJ = 0;
 }
 
 void prepareFrameToSend(unsigned char* buffer, int length) {
@@ -247,7 +249,7 @@ int llopen() {
 		else
 			attempts--;
         
-	} while (validResponse == FALSE && attempts>0);
+	} while (validResponse == FALSE && attempts > 0);
 	
 	if (validResponse == FALSE)
 	{
@@ -287,7 +289,7 @@ int llclose(int fd) {
 		}
 		
 		newtio.c_oflag = 0;
-		tcsetattr(fd,TCSANOW,&newtio);
+		//tcsetattr(fd,TCSANOW,&newtio);
 		
 		remaining = 5;
 		
@@ -337,7 +339,7 @@ int llclose(int fd) {
             remaining = 5;
             
 			newtio.c_oflag = OPOST;
-			tcsetattr(fd,TCSANOW,&newtio);
+			//tcsetattr(fd,TCSANOW,&newtio);
 			
 			while(remaining > 0 && UAattempts > 0)
 			{
@@ -365,24 +367,30 @@ int llclose(int fd) {
 		return -1;
 	}
 	
+    /*
 	if (tcsetattr(fd,TCSANOW,&oldtio) == -1) {
         perror("tcsetattr");
         return -1;
     }
+     */
     
     return close(fd);
 }
 
 int llwrite(int fd, unsigned char* applicationPackage, int length) {
     int answer_result, counter, bytesWritten, attempts = MAX_ATTEMPTS, validAnswer = FALSE;
-    unsigned char UA_ACK_RECEIVED[5], UA_ACK_EXPECTED[5];
+    unsigned char UA_ACK_RECEIVED[5], UA_ACK_EXPECTED[5], POSSIBLE_REJ[5];
     
     FILE* oFile = fopen("enviado", "ab"); /* TODO: remover */
     
-    if(LLayer->sequenceNumber == 0)
+    if(LLayer->sequenceNumber == 0) {
         memcpy(UA_ACK_EXPECTED, UA_ACK_1, 5); /* waits for the next frame */
-	else
+        memcpy(POSSIBLE_REJ, UA_REJ_0, 5);
+    }
+	else {
         memcpy(UA_ACK_EXPECTED, UA_ACK_0, 5);
+        memcpy(POSSIBLE_REJ, UA_REJ_1, 5);
+    }
     
     prepareFrameToSend(applicationPackage, length);
     
@@ -412,19 +420,15 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
         
 		answer_result=llread(fd,&UA_ACK_RECEIVED,5);
         
-		if(answer_result==5)
+		if(answer_result == 5)
 		{
-			counter = 0;
-            
-			while(counter < 5)
-			{
-				if(UA_ACK_RECEIVED[counter] != UA_ACK_EXPECTED[counter])
-				{
-					validAnswer = FALSE;
-					break;
-				}
-				counter++;
-			}
+            if(memcmp(UA_ACK_RECEIVED, UA_ACK_EXPECTED, 5) != 0) {
+                validAnswer = FALSE;
+                break;
+            }
+     
+            if(memcmp(UA_ACK_RECEIVED, POSSIBLE_REJ, 5) == 0)
+                LLayer->numReceivedREJ++;
 		}
 		else
 		{
@@ -473,6 +477,7 @@ int llread(int fd, unsigned char* buffer, int length)
         
         if(select_result == 0) {
             printf("Timeout ocurred\n");
+            LLayer->numTimeouts++;
             break;
         }
         

@@ -2,23 +2,23 @@
 
 int DEBUG_APP = FALSE;
 
-inline void loadBar(unsigned long long int x, unsigned long long int n, int r, int w)
+inline void loadBar(unsigned long long int completed, unsigned long long int total, int r, int w)
 {
     // Only update r times.
-    if ( x % (n/r) != 0 ) return;
+    if ( completed % (total/r) != 0 ) return;
     
     // Calculuate the ratio of complete-to-incomplete.
-    float ratio = x/(float)n;
+    float ratio = completed/(float)total;
     int   c     = ratio * w;
     
     // Show the percentage complete.
     printf("%3d%% [", (int)(ratio*100) );
     
     // Show the load bar.
-    for (x = 0; x<c; x++)
+    for (completed = 0; completed<c; completed++)
         printf("=");
     
-    for (x = c; x<w; x++)
+    for (completed = c; completed<w; completed++)
         printf(" ");
     
     // ANSI Control codes to go back to the
@@ -170,9 +170,17 @@ int sendFile(applicationLayer* app) {
         exit(-1);
     }
     
-    printf("Total bytes sent (including package and frame headers): %lld\n", LLayer->totalBytesSent);
-    printf("Total packages sent (including control start & end): %lld\n\n", packetsSent+2);
+    printf("Total data sent (including package and frame headers): %lld bytes\n", LLayer->totalBytesSent);
+    printf("Extra data sent (not file data): %lld bytes\n", LLayer->totalBytesSent-app->originalFileSize);
+    printf("Total packages sent (including control start & end): %lld\n", packetsSent+2);
 
+    result = llclose(app->fileDescriptor);
+    
+    if(result < 0) {
+        printf("Error closing port!\n");
+        exit(-1);
+    }
+    
     return OK;
 }
 

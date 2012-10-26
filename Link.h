@@ -37,7 +37,9 @@ typedef struct {
     int baudrate;
     unsigned int sequenceNumber;
     unsigned int timeout;
-    unsigned int numTransmissions;
+    unsigned int numMaxTransmissions;
+    unsigned long int numTimeouts;
+    unsigned long int numReceivedREJ;
     unsigned long long int totalBytesSent;
 } linkLayer;
 
