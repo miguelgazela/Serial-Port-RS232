@@ -7,9 +7,12 @@
 #define TRUE 1
 
 #define MAX_FILENAME 128
-#define MAX_SIZE_DATAFIELD 256
-#define MAX_SIZE_PACKAGE_FIELD 260
+#define MAX_SIZE_DATAFIELD 65535
+#define MIN_SIZE_DATAFIELD 128
+#define REGULAR_SIZE_DATAFIELD 4096
 
 #define OK 1
+
+#define DIM(x) (sizeof(x)/sizeof(*(x)))
 
 #endif
