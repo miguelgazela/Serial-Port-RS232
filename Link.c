@@ -59,6 +59,7 @@ void prepareFrameToSend(unsigned char* buffer, int length) {
     /* STUFFING BCC2 */
     
     BCC2 = buffer[0];
+    
     for(bufferIterator = 1; bufferIterator < length; bufferIterator++)
         BCC2 ^= buffer[bufferIterator];
     

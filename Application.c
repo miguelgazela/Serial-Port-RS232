@@ -71,7 +71,7 @@ int openFile(applicationLayer* app, char* filename) {
 }
 
 int sendFile(applicationLayer* app) {
-    unsigned long long int remainingFileBytes, packetsSent = 0;
+    unsigned long long int remainingFileBytes, packetsSent = 0, sentBytes;
     int remaining, result;
     dataPackage* fileData;
     
@@ -104,10 +104,6 @@ int sendFile(applicationLayer* app) {
     
     while (remainingFileBytes > 0) { /* while there's still data to send */
         
-        fileData = (dataPackage*)malloc(sizeof(dataPackage));
-        fileData->C = C_DATA;
-        fileData->N = (unsigned char)packetsSent % 255;
-        
         if(!DEBUG_APP) {
             if(app->ctrlPkg.V_Pkg < 50)
                 loadBar(packetsSent, app->ctrlPkg.V_Pkg, app->ctrlPkg.V_Pkg, 70);
@@ -115,22 +111,27 @@ int sendFile(applicationLayer* app) {
                 loadBar(packetsSent, app->ctrlPkg.V_Pkg, 50, 70);
         }
         
-        if(remainingFileBytes >= MAX_SIZE_DATAFIELD) {
+        if(remainingFileBytes >= app->fileblocksize) {
+            fileData = (dataPackage*)malloc(sizeof(dataPackage) + (app->fileblocksize - 1));
+            sentBytes = (sizeof(dataPackage) + (app->fileblocksize -1));
             
-            fileData->L1 = 0; fileData->L2 = 1;
-            remaining = MAX_SIZE_DATAFIELD;
+            fileData->L1 = (app->fileblocksize % 256); fileData->L2 = (app->fileblocksize / 256);
+            remaining = app->fileblocksize;
             
             while (TRUE) {
-                remaining -= fread(&fileData->dataField[MAX_SIZE_DATAFIELD-remaining], 1, remaining, app->pFile);
+                remaining -= fread(&fileData->dataField[app->fileblocksize-remaining], 1, remaining, app->pFile);
                 
                 if(remaining == 0) /* successfully read all bytes */ {
-                    remainingFileBytes -= MAX_SIZE_DATAFIELD;
+                    remainingFileBytes -= app->fileblocksize;
                     break;
                 }
             }
         }
         else {
-            fileData->L1 = remainingFileBytes; fileData->L2 = 0;
+            fileData = (dataPackage*)malloc(sizeof(dataPackage) + (remainingFileBytes - 1));
+            sentBytes = (sizeof(dataPackage) + (remainingFileBytes - 1));
+            
+            fileData->L1 = (remainingFileBytes % 256); fileData->L2 = (remainingFileBytes / 256);
             remaining = remainingFileBytes;
             
             while (TRUE) {
@@ -143,10 +144,13 @@ int sendFile(applicationLayer* app) {
             }
         }
         
+        fileData->C = C_DATA;
+        fileData->N = (unsigned char)packetsSent % 255;
+        
         if(DEBUG_APP)
             printf("Package number: %lld\nRemaining bytes to be sent: %lld\n", packetsSent, remainingFileBytes);
         
-        result = llwrite(app->fileDescriptor, (unsigned char*)fileData, sizeof(dataPackage));
+        result = llwrite(app->fileDescriptor, (unsigned char*)fileData, sentBytes);
         
         if(result == -1) {
             printf("Error sending a data package.\n");
@@ -201,10 +205,10 @@ void setControlPackage(applicationLayer* app) {
     app->ctrlPkg.T_Pkg = T_PKG;
     app->ctrlPkg.L_Pkg = (unsigned char)sizeof(unsigned long long int);
     
-    if((app->originalFileSize % MAX_SIZE_DATAFIELD) == 0)
-        app->ctrlPkg.V_Pkg = (unsigned long long int)app->originalFileSize/MAX_SIZE_DATAFIELD;
+    if((app->originalFileSize % app->fileblocksize) == 0)
+        app->ctrlPkg.V_Pkg = (unsigned long long int)app->originalFileSize/app->fileblocksize;
     else
-        app->ctrlPkg.V_Pkg = (unsigned long long int)ceil((double)app->originalFileSize/MAX_SIZE_DATAFIELD);
+        app->ctrlPkg.V_Pkg = (unsigned long long int)ceil((double)app->originalFileSize/app->fileblocksize);
     
     if(DEBUG_APP) {
         printf("Control Package: Start\n");
@@ -212,5 +216,14 @@ void setControlPackage(applicationLayer* app) {
            app->ctrlPkg.T_Size, app->ctrlPkg.L_Size, app->ctrlPkg.V_Size, app->ctrlPkg.T_Name, app->ctrlPkg.L_Name,
            app->ctrlPkg.V_Name, app->ctrlPkg.T_Pkg, app->ctrlPkg.L_Pkg, app->ctrlPkg.V_Pkg);
     }
+}
+
+void setFileBlockSize(applicationLayer* app, int fileblocksize) {
+    if(fileblocksize < MIN_SIZE_DATAFIELD)
+        app->fileblocksize = MIN_SIZE_DATAFIELD;
+    else if(fileblocksize > MAX_SIZE_DATAFIELD)
+        app->fileblocksize = REGULAR_SIZE_DATAFIELD; /* 128 Kb */
+    else
+        app->fileblocksize = fileblocksize;
 }
 

@@ -18,12 +18,11 @@ typedef struct {
 
 typedef struct {
     unsigned char C, N, L2, L1;
-    unsigned char dataField[MAX_SIZE_DATAFIELD];
+    unsigned char dataField[1];
 } dataPackage;
 
 typedef struct {
-    int status;
-    int fileDescriptor;
+    int status, fileDescriptor, fileblocksize;
     FILE* pFile;
     char* filename;
     unsigned long long int originalFileSize; /* 64 bits */
@@ -48,5 +47,6 @@ int openFile(applicationLayer* app, char* filename);
 int sendFile(applicationLayer* app);
 
 void setControlPackage(applicationLayer* app);
+void setFileBlockSize(applicationLayer* app, int fileblocksize);
 
 #endif

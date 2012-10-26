@@ -4,21 +4,29 @@
 #include <fcntl.h>
 
 int main(int argc, char* argv[]) {
-    int functionResult;
+    int functionResult, fileblocksize;
     char* nameFile;
     
-    if(argc != 3 && argc != 2) {
+    if(argc != 3 && argc != 2 && argc != 4) {
         printf("USAGE:\n\ttransmitter <portname>\n\ttransmitter <portname> <filename>\n");
+        printf("\ttransmitter <portname> <filename> <piecesFileSize>\n");
         exit(-1);
     }
     
-    if(argc == 3) {
+    if(argc == 3 || argc == 4) {
         if (strlen(argv[2]) > MAX_FILENAME) {
             printf("Filename is too long for this program to accept.\n");
             exit(-1);
         }
+        
+        if(argc == 4) {
+            fileblocksize = atoi(argv[3]);
+            
+            if(fileblocksize == 0)
+                printf("The file block size is invalid. The default value will be used.\n");
+        }
     }
-    else {
+    else if(argc == 2){
         nameFile = (char*)malloc(sizeof(char)*MAX_FILENAME);
         printf("File name (max 128 characters): ");
         scanf("%s", nameFile);
@@ -27,17 +35,18 @@ int main(int argc, char* argv[]) {
     /* creating the application layer */
     applicationLayer* app = getNewApplicationLayer();
     setAs(app, TRANSMITTER);
+    setFileBlockSize(app, fileblocksize);
     
     /* reading the file to be transmitted */
-    if(argc == 3)
+    if(argc == 3 || argc == 4)
         functionResult = openFile(app, argv[2]);
     else
         functionResult = openFile(app, nameFile);
     
     if(functionResult == INEXISTENT_FILE) {
-        if(argc == 3)
+        if(argc == 3 || argc == 4)
             printf("The file %s doesn't exist!\n", argv[2]);
-        else
+        else if(argc == 2)
             printf("The file %s doesn't exist!\n", nameFile);
         
         free(app);
@@ -62,10 +71,7 @@ int main(int argc, char* argv[]) {
             
             printf("Number of timeout occurrences: %ld\n", LLayer->numTimeouts);
             printf("Number of received REJ responses: %ld\n", LLayer->numReceivedREJ);
-            if(argc == 3)
-                printf("File %s sent with success.\n\n", argv[2]);
-            else
-                printf("File %s sent with success.\n\n", nameFile);
+            printf("File %s sent with success.\n\n", app->filename);
         }
             
     }
