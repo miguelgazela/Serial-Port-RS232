@@ -150,12 +150,10 @@ int llopen() {
 		return -1;
 	}
     
-    /*
     if (tcgetattr(fd,&oldtio) == -1) { 
         perror("tcgetattr");
         return -1;
     }
-     */
     
     bzero(&newtio, sizeof(newtio));
     newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
@@ -172,12 +170,10 @@ int llopen() {
      */
     tcflush(fd, TCIOFLUSH);
     
-    /*
     if (tcsetattr(fd,TCSANOW,&newtio) == -1) {
         perror("tcsetattr");
         return -1;
     }
-     */
     
     do {
 		setAttempts = MAX_ATTEMPTS;
@@ -199,7 +195,7 @@ int llopen() {
 		}
 		
 		newtio.c_oflag = 0;
-		/*tcsetattr(fd,TCSANOW,&newtio);*/
+		tcsetattr(fd,TCSANOW,&newtio);
 		
 		remaining = 5;
 		
@@ -290,7 +286,7 @@ int llclose(int fd) {
 		}
 		
 		newtio.c_oflag = 0;
-		//tcsetattr(fd,TCSANOW,&newtio);
+		tcsetattr(fd,TCSANOW,&newtio);
 		
 		remaining = 5;
 		
@@ -340,7 +336,7 @@ int llclose(int fd) {
             remaining = 5;
             
 			newtio.c_oflag = OPOST;
-			//tcsetattr(fd,TCSANOW,&newtio);
+			tcsetattr(fd,TCSANOW,&newtio);
 			
 			while(remaining > 0 && UAattempts > 0)
 			{
@@ -368,18 +364,16 @@ int llclose(int fd) {
 		return -1;
 	}
 	
-    /*
 	if (tcsetattr(fd,TCSANOW,&oldtio) == -1) {
         perror("tcsetattr");
         return -1;
     }
-     */
     
     return close(fd);
 }
 
 int llwrite(int fd, unsigned char* applicationPackage, int length) {
-    int answer_result, counter, bytesWritten, attempts = MAX_ATTEMPTS, validAnswer = FALSE;
+    int answer_result, bytesWritten, attempts = MAX_ATTEMPTS, validAnswer = FALSE;
     unsigned char UA_ACK_RECEIVED[5], UA_ACK_EXPECTED[5], POSSIBLE_REJ[5];
     
     FILE* oFile = fopen("enviado", "ab"); /* TODO: remover */
@@ -396,12 +390,11 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
     prepareFrameToSend(applicationPackage, length);
     
     newtio.c_oflag = OPOST;
-    /*tcsetattr(fd, TCSANOW, &newtio);*/
+    tcsetattr(fd, TCSANOW, &newtio);
     
     bytesWritten = fwrite(frameToSend, 1, sizeof(dataFrame) + frameToSend->extraPackageFieldSize, oFile); /* TODO: remover */
     fclose(oFile);
     
-    /*
     while(validAnswer==FALSE && attempts>0)
 	{
 		//ENVIAR
@@ -419,7 +412,7 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
         
 		validAnswer=TRUE;
         
-		answer_result=llread(fd,&UA_ACK_RECEIVED,5);
+		answer_result=llread(fd,UA_ACK_RECEIVED,5);
         
 		if(answer_result == 5)
 		{
@@ -438,12 +431,14 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
         
 		attempts--;
 	}
+    /*
+    LLayer->sequenceNumber = (LLayer->sequenceNumber + 1) % 2; // 0+1%2=1, 1+1%2=0
+    LLayer->totalBytesSent += bytesWritten;TODO: REMOVE
+    free(frameToSend);
+    return bytesWritten;
      */
     
-    LLayer->sequenceNumber = (LLayer->sequenceNumber + 1) % 2; // 0+1%2=1, 1+1%2=0
-    LLayer->totalBytesSent += bytesWritten; /* TODO: REMOVE */
-    free(frameToSend); /* TODO REMOVE */
-    return bytesWritten; /* TODO: Remove */
+    free(frameToSend);
     
 	if(validAnswer)
 	{
