@@ -1,6 +1,6 @@
 #include "Link.h"
 
-int DEBUG_LINK = FALSE;
+int DEBUG_LINK = TRUE;
 
 unsigned char SET_COMMAND[] = {FLAG, A, C_SET, (A ^ C_SET), FLAG};
 unsigned char UA_COMMAND[] = {FLAG, A, C_UA, (A ^ C_UA), FLAG};
