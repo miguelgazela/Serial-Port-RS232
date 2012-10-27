@@ -29,16 +29,18 @@ char * calculateSize(uint64_t size)
 }
 
 int main(int argc, char* argv[]) {
-    int functionResult, fileblocksize;
+    unsigned int functionResult, fileblocksize = REGULAR_SIZE_DATAFIELD;
+    unsigned int maxTransmissions, timeoutTime;
     char* nameFile;
     
-    if(argc != 3 && argc != 2 && argc != 4) {
+    if(argc != 3 && argc != 2 && argc != 4 && argc != 5) {
         printf("USAGE:\n\ttransmitter <portname>\n\ttransmitter <portname> <filename>\n");
         printf("\ttransmitter <portname> <filename> <piecesFileSize>\n");
+        printf("\ttransmitter <portname> <filename> <maxTransmissions> <timeoutTime>\n");
         exit(-1);
     }
     
-    if(argc == 3 || argc == 4) {
+    if(argc == 3 || argc == 4 || argc == 5) {
         if (strlen(argv[2]) > MAX_FILENAME) {
             printf("Filename is too long for this program to accept.\n");
             exit(-1);
@@ -48,7 +50,19 @@ int main(int argc, char* argv[]) {
             fileblocksize = atoi(argv[3]);
             
             if(fileblocksize == 0)
-                printf("The file block size is invalid. The default value will be used.\n");
+                printf("The file block size is invalid. The default value will be used (4096).\n");
+        }
+        else if (argc == 5) {
+            
+            if((maxTransmissions = atoi(argv[3])) == 0) {
+                printf("The max number of transmissions is invalid. The default value will be used (3).\n");
+                maxTransmissions = MAX_ATTEMPTS;
+            }
+            
+            if((timeoutTime = atoi(argv[4])) == 0) {
+                printf("The timeout time is invalid. The default value will be used (5).\n");
+                timeoutTime = TIMEOUT;
+            }
         }
     }
     else if(argc == 2){
@@ -63,7 +77,7 @@ int main(int argc, char* argv[]) {
     setFileBlockSize(app, fileblocksize);
     
     /* reading the file to be transmitted */
-    if(argc == 3 || argc == 4)
+    if(argc == 3 || argc == 4 || argc == 5)
         functionResult = openFile(app, argv[2]);
     else
         functionResult = openFile(app, nameFile);
@@ -88,7 +102,10 @@ int main(int argc, char* argv[]) {
         printf("File %s opened with success.\n", app->filename);
         
         /* create the link layer */
-        createNewLinkLayer(argv[1]);
+        if(argc == 5)
+            createNewLinkLayerOptions(argv[1], maxTransmissions, timeoutTime);
+        else
+            createNewLinkLayer(argv[1]);
         
         char* str = calculateSize(app->originalFileSize);
         printf("\nSending file '%s' with size: %s\n", app->filename, str);

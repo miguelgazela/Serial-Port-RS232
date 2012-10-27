@@ -13,7 +13,7 @@
 
 #define BAUDRATE B38400
 #define MAX_ATTEMPTS 3
-#define TIMEOUT 3.0
+#define TIMEOUT 5.0
 #define MAX_FRAME_SIZE 266
 
 #define FLAG 0x7E
@@ -47,6 +47,7 @@ linkLayer* LLayer;
 struct termios oldtio,newtio;
 
 void createNewLinkLayer(char* portname);
+void createNewLinkLayerOptions(char* portname, unsigned int numMaxTransmissions, unsigned int timeout);
 
 int llopen();
 int llclose(int fd);

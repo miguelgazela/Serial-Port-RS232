@@ -35,6 +35,16 @@ void createNewLinkLayer(char* portname) {
     LLayer->numReceivedREJ = 0;
 }
 
+void createNewLinkLayerOptions(char* portname, unsigned int numMaxTransmissions, unsigned int timeout) {
+    createNewLinkLayer(portname);
+    LLayer->numMaxTransmissions = numMaxTransmissions;
+    LLayer->timeout = timeout;
+    if(DEBUG_LINK) {
+        printf("Defined new max number of transmissions: %d\n", LLayer->numMaxTransmissions);
+        printf("Defined new timeout time: %d\n", LLayer->timeout);
+    }
+}
+
 void prepareFrameToSend(unsigned char* buffer, int length) {
     unsigned int bufferIterator,packageFieldIterator, bytesStuffed = 0, extraPackageFieldSize;
     unsigned char BCC1,BCC2;
@@ -137,7 +147,7 @@ int llopen() {
 	struct timeval Timeout;
 	fd_set readfs;
 	time_t initialTime = time(NULL);
-	double remainingTime = TIMEOUT;
+	double remainingTime = LLayer->timeout;
     unsigned char UA_RESPONSE[5];
 	
 	/*
@@ -150,10 +160,12 @@ int llopen() {
 		return -1;
 	}
     
+    /*
     if (tcgetattr(fd,&oldtio) == -1) { 
         perror("tcgetattr");
         return -1;
     }
+     */
     
     bzero(&newtio, sizeof(newtio));
     newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
@@ -170,13 +182,15 @@ int llopen() {
      */
     tcflush(fd, TCIOFLUSH);
     
+    /*
     if (tcsetattr(fd,TCSANOW,&newtio) == -1) {
         perror("tcsetattr");
         return -1;
     }
+     */
     
     do {
-		setAttempts = MAX_ATTEMPTS;
+		setAttempts = LLayer->numMaxTransmissions;
 		remaining = 5;
         
 		while(remaining > 0 && setAttempts > 0)
@@ -195,7 +209,7 @@ int llopen() {
 		}
 		
 		newtio.c_oflag = 0;
-		tcsetattr(fd,TCSANOW,&newtio);
+		//tcsetattr(fd,TCSANOW,&newtio);
 		
 		remaining = 5;
 		
@@ -207,7 +221,7 @@ int llopen() {
 			
 			selectResult = select(fd+1, &readfs, NULL, NULL, &Timeout);
             
-			remainingTime = TIMEOUT - difftime(time(NULL),initialTime);
+			remainingTime = LLayer->timeout - difftime(time(NULL),initialTime);
 			
 			if(selectResult == 0) {
 				printf("Timeout ocurred. Can't establish connection\n");
@@ -257,16 +271,16 @@ int llopen() {
 }
 
 int llclose(int fd) {
-	int counter = 0, attempts = MAX_ATTEMPTS, remaining, selectResult, DISCattempts, validDISCresponse, validResponse, UAattempts;
+	int counter = 0, attempts = LLayer->numMaxTransmissions, remaining, selectResult, DISCattempts, validDISCresponse, validResponse, UAattempts;
 	struct timeval Timeout;
 	fd_set readfs;
 	time_t initialTime = time(NULL);
-	double remainingTime = TIMEOUT;
+	double remainingTime = LLayer->timeout;
 	unsigned char DISC_RESPONSE[5];
 	
     do {
         
-		DISCattempts = MAX_ATTEMPTS;
+		DISCattempts = LLayer->numMaxTransmissions;
 		remaining = 5;
         
 		while(remaining > 0 && DISCattempts > 0)
@@ -298,7 +312,7 @@ int llclose(int fd) {
 			
 			selectResult = select(fd+1, &readfs, NULL, NULL, &Timeout);
             
-			remainingTime = TIMEOUT - difftime(time(NULL),initialTime);
+			remainingTime = LLayer->timeout - difftime(time(NULL),initialTime);
 			
 			if(selectResult == 0) {
 				printf("Timeout ocurred. Can't close connection\n");
@@ -373,7 +387,7 @@ int llclose(int fd) {
 }
 
 int llwrite(int fd, unsigned char* applicationPackage, int length) {
-    int answer_result, bytesWritten, attempts = MAX_ATTEMPTS, validAnswer = FALSE;
+    int answer_result, bytesWritten, attempts = LLayer->numMaxTransmissions, validAnswer = FALSE;
     unsigned char UA_ACK_RECEIVED[5], UA_ACK_EXPECTED[5], POSSIBLE_REJ[5];
     
     FILE* oFile = fopen("enviado", "ab"); /* TODO: remover */
@@ -390,11 +404,12 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
     prepareFrameToSend(applicationPackage, length);
     
     newtio.c_oflag = OPOST;
-    tcsetattr(fd, TCSANOW, &newtio);
+    //tcsetattr(fd, TCSANOW, &newtio);
     
     bytesWritten = fwrite(frameToSend, 1, sizeof(dataFrame) + frameToSend->extraPackageFieldSize, oFile); /* TODO: remover */
     fclose(oFile);
     
+    /*
     while(validAnswer==FALSE && attempts>0)
 	{
 		//ENVIAR
@@ -431,12 +446,14 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
         
 		attempts--;
 	}
-    /*
+     */
+    
+    
     LLayer->sequenceNumber = (LLayer->sequenceNumber + 1) % 2; // 0+1%2=1, 1+1%2=0
-    LLayer->totalBytesSent += bytesWritten;TODO: REMOVE
+    LLayer->totalBytesSent += bytesWritten;
     free(frameToSend);
     return bytesWritten;
-     */
+     
     
     free(frameToSend);
     
@@ -452,14 +469,14 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
 
 int llread(int fd, unsigned char* buffer, int length)
 {
-    int remaining=length, select_result;
+    int remaining = length, select_result;
     struct timeval Timeout;
     fd_set readfs;
     time_t tempo_ini = time(NULL);
-    double tempo_restante = TIMEOUT;
+    double tempo_restante = LLayer->timeout;
     
     newtio.c_oflag = 0;
-    tcsetattr(fd, TCSANOW, &newtio);
+    //tcsetattr(fd, TCSANOW, &newtio);
     
     while(1)
     {
@@ -469,7 +486,7 @@ int llread(int fd, unsigned char* buffer, int length)
         
         select_result = select(fd+1, &readfs, NULL, NULL, &Timeout);
         
-        tempo_restante = TIMEOUT - difftime(time(NULL),tempo_ini);
+        tempo_restante = LLayer->timeout - difftime(time(NULL),tempo_ini);
         
         if(select_result == 0) {
             printf("Timeout ocurred\n");
