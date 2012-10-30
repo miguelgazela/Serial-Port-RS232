@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
     if(argc != 3 && argc != 2 && argc != 4 && argc != 6) {
         printf("USAGE:\n");
 		printf("\ttransmitter <portname>\n");
-		pritnf("\ttransmitter <portname> <filename>\n");
+		printf("\ttransmitter <portname> <filename>\n");
         printf("\ttransmitter <portname> <filename> <piecesFileSize>\n");
 		printf("\ttransmitter <portname> <filename> <maxTransmissions> <timeoutTime>\n");
         printf("\ttransmitter <portname> <filename> <baudrate> <maxTransmissions> <timeoutTime>\n");

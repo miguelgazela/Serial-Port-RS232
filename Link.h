@@ -48,7 +48,7 @@ linkLayer* LLayer;
 struct termios oldtio,newtio;
 
 void createNewLinkLayer(char* portname);
-void createNewLinkLayerOptions(char* portname, unsigned int numMaxTransmissions, unsigned int timeout);
+void createNewLinkLayerOptions(char* portname,int baudrate, unsigned int numMaxTransmissions, unsigned int timeout);
 
 int llopen();
 int llclose(int fd);

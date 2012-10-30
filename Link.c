@@ -46,7 +46,7 @@ void createNewLinkLayerOptions(char* portname, int baudrate, unsigned int numMax
     }
 }
 
-int changeBaudrate()
+int changeBaudrate(int fd)
 {
     struct serial_struct serial_port_info;
     int default_divisor, custom_divisor, actual_baudrate;
@@ -60,7 +60,8 @@ int changeBaudrate()
     
     default_divisor = serial_port_info.custom_divisor;
     custom_divisor = serial_port_info.baud_base/LLayer->baudrate;
-    actual_baudrate = serial_port_info.baud_base / serial_port_info.custom_divisor;
+    //actual_baudrate = serial_port_info.baud_base / serial_port_info.custom_divisor;
+    actual_baudrate = serial_port_info.baud_base / custom_divisor;
     
     if(custom_divisor==0)
         custom_divisor=default_divisor;
@@ -227,7 +228,7 @@ int llopen() {
     
     //Se o baudrate não for o default
 	if(LLayer->baudrate!=-1)
-		changeBaudrate();
+		changeBaudrate(fd);
     
     tcflush(fd, TCIOFLUSH);
     
