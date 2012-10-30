@@ -8,12 +8,14 @@
 #include <fcntl.h>
 #include <time.h>
 #include <termios.h>
+#include <serial.h>
 #include <sys/select.h>
+#include <sys/ioctl.h>
 #include "defs.h"
 
-#define BAUDRATE B38400
-#define MAX_ATTEMPTS 3
-#define TIMEOUT 5.0
+#define DEFAULT_BAUDRATE B38400
+#define DEFAULT_MAX_ATTEMPTS 3
+#define DEFAULT_TIMEOUT 5.0
 
 #define FLAG 0x7E
 #define A 0x03
@@ -33,7 +35,7 @@ typedef struct {
 
 typedef struct {
     char port[20];
-    int baudrate;
+    int baudrate; //Value of -1 means default is used
     unsigned int sequenceNumber;
     unsigned int timeout;
     unsigned int numMaxTransmissions;

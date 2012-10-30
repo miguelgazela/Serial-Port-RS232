@@ -31,16 +31,20 @@ char * calculateSize(uint64_t size)
 int main(int argc, char* argv[]) {
     unsigned int functionResult, fileblocksize = REGULAR_SIZE_DATAFIELD;
     unsigned int maxTransmissions, timeoutTime;
+    int baudrate = -1;
     char* nameFile;
     
-    if(argc != 3 && argc != 2 && argc != 4 && argc != 5) {
-        printf("USAGE:\n\ttransmitter <portname>\n\ttransmitter <portname> <filename>\n");
+    if(argc != 3 && argc != 2 && argc != 4 && argc != 6) {
+        printf("USAGE:\n");
+		printf("\ttransmitter <portname>\n");
+		pritnf("\ttransmitter <portname> <filename>\n");
         printf("\ttransmitter <portname> <filename> <piecesFileSize>\n");
-        printf("\ttransmitter <portname> <filename> <maxTransmissions> <timeoutTime>\n");
+		printf("\ttransmitter <portname> <filename> <maxTransmissions> <timeoutTime>\n");
+        printf("\ttransmitter <portname> <filename> <baudrate> <maxTransmissions> <timeoutTime>\n");
         exit(-1);
     }
     
-    if(argc == 3 || argc == 4 || argc == 5) {
+    if(argc == 3 || argc == 4 || argc == 5 || argc == 6) {
         if (strlen(argv[2]) > MAX_FILENAME) {
             printf("Filename is too long for this program to accept.\n");
             exit(-1);
@@ -56,12 +60,29 @@ int main(int argc, char* argv[]) {
             
             if((maxTransmissions = atoi(argv[3])) == 0) {
                 printf("The max number of transmissions is invalid. The default value will be used (3).\n");
-                maxTransmissions = MAX_ATTEMPTS;
+                maxTransmissions = DEFAULT_MAX_ATTEMPTS;
             }
             
             if((timeoutTime = atoi(argv[4])) == 0) {
                 printf("The timeout time is invalid. The default value will be used (5).\n");
-                timeoutTime = TIMEOUT;
+                timeoutTime = DEFAULT_TIMEOUT;
+            }
+        }
+        else if (argc == 6) {
+            
+			if((baudrate = atoi(argv[3])) == 0) {
+				printf("The baudrate is invalid. The default value will be used (%d).\n",DEFAULT_BAUDRATE);
+                baudrate=-1;
+            }
+            
+            if((maxTransmissions = atoi(argv[4])) == 0) {
+                printf("The max number of transmissions is invalid. The default value will be used (3).\n");
+                maxTransmissions = DEFAULT_MAX_ATTEMPTS;
+            }
+            
+            if((timeoutTime = atoi(argv[5])) == 0) {
+                printf("The timeout time is invalid. The default value will be used (5).\n");
+                timeoutTime = DEFAULT_TIMEOUT;
             }
         }
     }
@@ -77,13 +98,13 @@ int main(int argc, char* argv[]) {
     setFileBlockSize(app, fileblocksize);
     
     /* reading the file to be transmitted */
-    if(argc == 3 || argc == 4 || argc == 5)
+    if(argc == 3 || argc == 4 || argc == 5 || argc == 6)
         functionResult = openFile(app, argv[2]);
     else
         functionResult = openFile(app, nameFile);
     
     if(functionResult == INEXISTENT_FILE) {
-        if(argc == 3 || argc == 4)
+        if(argc == 3 || argc == 4 || argc == 5 || argc == 6)
             printf("The file %s doesn't exist!\n", argv[2]);
         else if(argc == 2)
             printf("The file %s doesn't exist!\n", nameFile);
@@ -102,8 +123,8 @@ int main(int argc, char* argv[]) {
         printf("File %s opened with success.\n", app->filename);
         
         /* create the link layer */
-        if(argc == 5)
-            createNewLinkLayerOptions(argv[1], maxTransmissions, timeoutTime);
+        if(argc == 5 || argc == 6)
+            createNewLinkLayerOptions(argv[1], baudrate, maxTransmissions, timeoutTime);
         else
             createNewLinkLayer(argv[1]);
         

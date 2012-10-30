@@ -26,22 +26,67 @@ void createNewLinkLayer(char* portname) {
     
     memcpy(LLayer->port, portname, sizeof(char)*20);
     
-    LLayer->numMaxTransmissions = MAX_ATTEMPTS;
-    /*(*lLayerPtr).baudrate = BAUDRATE;*/ /*TODO*/
-    LLayer->timeout = TIMEOUT;
+    LLayer->numMaxTransmissions = DEFAULT_MAX_ATTEMPTS;
+    LLayer->baudrate = -1;
+    LLayer->timeout = DEFAULT_TIMEOUT;
     LLayer->sequenceNumber = 0;
     LLayer->totalBytesSent = 0;
     LLayer->numTimeouts = 0;
     LLayer->numReceivedREJ = 0;
 }
 
-void createNewLinkLayerOptions(char* portname, unsigned int numMaxTransmissions, unsigned int timeout) {
+void createNewLinkLayerOptions(char* portname, int baudrate, unsigned int numMaxTransmissions, unsigned int timeout) {
     createNewLinkLayer(portname);
+    LLayer->baudrate = baudrate;
     LLayer->numMaxTransmissions = numMaxTransmissions;
     LLayer->timeout = timeout;
     if(DEBUG_LINK) {
         printf("Defined new max number of transmissions: %d\n", LLayer->numMaxTransmissions);
         printf("Defined new timeout time: %d\n", LLayer->timeout);
+    }
+}
+
+int changeBaudrate()
+{
+    struct serial_struct serial_port_info;
+    int default_divisor, custom_divisor, actual_baudrate;
+    
+    //Obter configurações da porta de série
+    if (ioctl(fd, TIOCGSERIAL, &serial_port_info) < 0)
+    {
+        perror("Impossivel obter configs. da porta de serie. Continuando a utilizar baudrate por defeito.\n");
+        return -1;
+    }
+    
+    default_divisor = serial_port_info.custom_divisor;
+    custom_divisor = serial_port_info.baud_base/LLayer->baudrate;
+    actual_baudrate = serial_port_info.baud_base / serial_port_info.custom_divisor;
+    
+    if(custom_divisor==0)
+        custom_divisor=default_divisor;
+    
+    if (actual_baudrate < LLayer->baudrate * 0.95 || actual_baudrate > LLayer->baudrate * 1.05)
+    {
+        printf("Nao e possivel definir uma baudrate satisfatoriamente proxima da especificada. Continuando a utilizar a baudrate por defeito.\n");
+        return -1;
+    }
+    
+    serial_port_info.custom_divisor = custom_divisor;
+    serial_port_info.flags &= ~ASYNC_SPD_MASK;
+    serial_port_info.flags |= ASYNC_SPD_CUST;
+	
+    //Definir configurações da porta de série
+    if (ioctl(fd, TIOCSSERIAL, &serial_port_info) < 0)
+    {
+        perror("Impossível definir configs da porta de série. Continuando a baudrate por defeito.\n");
+        return -1;
+    }
+    else
+    {
+        //B38400 permite utilizar baud rates non-standard
+        cfsetispeed(&newtio, B38400);
+        cfsetospeed(&newtio, B38400);
+        return 0;
     }
 }
 
@@ -144,7 +189,7 @@ void prepareFrameToSend(unsigned char* buffer, int length) {
 }
 
 int llopen() {
-	int fd, counter = 0, attempts = MAX_ATTEMPTS, remaining, selectResult, setAttempts, validUAresponse, validResponse;
+	int fd, counter = 0, attempts = DEFAULT_MAX_ATTEMPTS, remaining, selectResult, setAttempts, validUAresponse, validResponse;
 	struct timeval Timeout;
 	fd_set readfs;
 	time_t initialTime = time(NULL);
@@ -167,7 +212,7 @@ int llopen() {
     }
     
     bzero(&newtio, sizeof(newtio));
-    newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+    newtio.c_cflag = DEFAULT_BAUDRATE | CS8 | CLOCAL | CREAD;
     newtio.c_iflag = IGNPAR;
     newtio.c_oflag = OPOST;
     
@@ -179,6 +224,11 @@ int llopen() {
      VTIME e VMIN devem ser alterados de forma a proteger com um temporizador a
      leitura do(s) próximo(s) caracter(es)
      */
+    
+    //Se o baudrate não for o default
+	if(LLayer->baudrate!=-1)
+		changeBaudrate();
+    
     tcflush(fd, TCIOFLUSH);
     
     if (tcsetattr(fd,TCSANOW,&newtio) == -1) {
@@ -343,7 +393,7 @@ int llclose(int fd) {
             if(DEBUG_LINK)
                 printf("Port %s is closing.\n", LLayer->port);
 			
-			UAattempts = MAX_ATTEMPTS;
+			UAattempts = DEFAULT_MAX_ATTEMPTS;
             remaining = 5;
             
 			newtio.c_oflag = OPOST;
@@ -448,7 +498,6 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
     free(frameToSend);
     return bytesWritten;
      */
-     
     
     free(frameToSend);
     
