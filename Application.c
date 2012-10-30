@@ -217,7 +217,7 @@ void setFileBlockSize(applicationLayer* app, int fileblocksize) {
     if(fileblocksize < MIN_SIZE_DATAFIELD)
         app->fileblocksize = MIN_SIZE_DATAFIELD;
     else if(fileblocksize > MAX_SIZE_DATAFIELD)
-        app->fileblocksize = REGULAR_SIZE_DATAFIELD; /* 128 Kb */
+        app->fileblocksize = MAX_SIZE_DATAFIELD;
     else
         app->fileblocksize = fileblocksize;
 }

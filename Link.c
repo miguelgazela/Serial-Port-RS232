@@ -93,7 +93,7 @@ void prepareFrameToSend(unsigned char* buffer, int length) {
     if(DEBUG_LINK)
         printf("Number of stuffed bytes: %d\n", bytesStuffed);
     
-    extraPackageFieldSize = (length - 1) + bytesStuffed + 3; /* 3 for the BCC2[2] and the FLAG at the end*/
+    extraPackageFieldSize = (length - 2) + bytesStuffed + 3; /* 3 for the BCC2[2] and the FLAG at the end*/
     
     if(DEBUG_LINK)
         printf("Extra package field size: %d\n", extraPackageFieldSize);
@@ -133,12 +133,13 @@ void prepareFrameToSend(unsigned char* buffer, int length) {
     }
     
     /* set frame tail */
-    memcpy(&frameToSend->packageField[frameToSend->extraPackageFieldSize-2], tempBCC2, 2);
-    frameToSend->packageField[frameToSend->extraPackageFieldSize] = FLAG;
+    memcpy(&frameToSend->packageField[frameToSend->extraPackageFieldSize-1], tempBCC2, 2);
+    frameToSend->packageField[frameToSend->extraPackageFieldSize+1] = FLAG;
     
     if(DEBUG_LINK) {
         printf("struct 'dataframe' size: %d bytes\tActual bytes sent: %d\n", (int)sizeof(dataFrame),  (int)sizeof(dataFrame) + extraPackageFieldSize);
-        printf("Confirm FLAG at package field tail: 0x%X\n\n",  frameToSend->packageField[frameToSend->extraPackageFieldSize]);
+        printf("Confirm BCC2[0]: 0x%X BCC2[1]: 0x%X\n", frameToSend->packageField[frameToSend->extraPackageFieldSize-1], frameToSend->packageField[frameToSend->extraPackageFieldSize]);
+        printf("Confirm FLAG at package field tail: 0x%X\n\n",  frameToSend->packageField[frameToSend->extraPackageFieldSize+1]);
     }
 }
 
@@ -160,12 +161,10 @@ int llopen() {
 		return -1;
 	}
     
-    /*
     if (tcgetattr(fd,&oldtio) == -1) { 
         perror("tcgetattr");
         return -1;
     }
-     */
     
     bzero(&newtio, sizeof(newtio));
     newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
@@ -182,12 +181,10 @@ int llopen() {
      */
     tcflush(fd, TCIOFLUSH);
     
-    /*
     if (tcsetattr(fd,TCSANOW,&newtio) == -1) {
         perror("tcsetattr");
         return -1;
     }
-     */
     
     do {
 		setAttempts = LLayer->numMaxTransmissions;
@@ -209,7 +206,7 @@ int llopen() {
 		}
 		
 		newtio.c_oflag = 0;
-		//tcsetattr(fd,TCSANOW,&newtio);
+		tcsetattr(fd,TCSANOW,&newtio);
 		
 		remaining = 5;
 		
@@ -390,7 +387,7 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
     int answer_result, bytesWritten, attempts = LLayer->numMaxTransmissions, validAnswer = FALSE;
     unsigned char UA_ACK_RECEIVED[5], UA_ACK_EXPECTED[5], POSSIBLE_REJ[5];
     
-    FILE* oFile = fopen("enviado", "ab"); /* TODO: remover */
+    //FILE* oFile = fopen("enviado", "ab"); /* TODO: remover */
     
     if(LLayer->sequenceNumber == 0) {
         memcpy(UA_ACK_EXPECTED, UA_ACK_1, 5); /* waits for the next frame */
@@ -404,12 +401,12 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
     prepareFrameToSend(applicationPackage, length);
     
     newtio.c_oflag = OPOST;
-    //tcsetattr(fd, TCSANOW, &newtio);
+    tcsetattr(fd, TCSANOW, &newtio);
     
-    bytesWritten = fwrite(frameToSend, 1, sizeof(dataFrame) + frameToSend->extraPackageFieldSize, oFile); /* TODO: remover */
-    fclose(oFile);
+    //bytesWritten = fwrite(frameToSend, 1, sizeof(dataFrame) + frameToSend->extraPackageFieldSize, oFile); /* TODO: remover */
     
-    /*
+    //fclose(oFile);
+    
     while(validAnswer==FALSE && attempts>0)
 	{
 		//ENVIAR
@@ -437,6 +434,7 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
             }
      
             if(memcmp(UA_ACK_RECEIVED, POSSIBLE_REJ, 5) == 0)
+                validAnswer = FALSE;
                 LLayer->numReceivedREJ++;
 		}
 		else
@@ -446,13 +444,13 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
         
 		attempts--;
 	}
-     */
     
-    
+    /*
     LLayer->sequenceNumber = (LLayer->sequenceNumber + 1) % 2; // 0+1%2=1, 1+1%2=0
     LLayer->totalBytesSent += bytesWritten;
     free(frameToSend);
     return bytesWritten;
+     */
      
     
     free(frameToSend);
@@ -476,7 +474,7 @@ int llread(int fd, unsigned char* buffer, int length)
     double tempo_restante = LLayer->timeout;
     
     newtio.c_oflag = 0;
-    //tcsetattr(fd, TCSANOW, &newtio);
+    tcsetattr(fd, TCSANOW, &newtio);
     
     while(1)
     {
