@@ -14,7 +14,6 @@
 #define BAUDRATE B38400
 #define MAX_ATTEMPTS 3
 #define TIMEOUT 5.0
-#define MAX_FRAME_SIZE 266
 
 #define FLAG 0x7E
 #define A 0x03

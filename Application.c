@@ -94,7 +94,7 @@ int sendFile(applicationLayer* app) {
     result = llwrite(app->fileDescriptor, (unsigned char*)&app->ctrlPkg, sizeof(controlPackage));
     
     if (result < 0) {
-        perror("Package control delivery");
+        printf("Package control delivery failed.\n");
         exit(-1);
     }
     
@@ -169,7 +169,7 @@ int sendFile(applicationLayer* app) {
     result = llwrite(app->fileDescriptor, (unsigned char*)&app->ctrlPkg, sizeof(controlPackage));
     
     if (result < 0) {
-        perror("Package control delivery");
+        printf("Package control delivery failed.\n");
         exit(-1);
     }
 

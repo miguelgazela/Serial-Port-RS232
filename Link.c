@@ -386,9 +386,7 @@ int llclose(int fd) {
 int llwrite(int fd, unsigned char* applicationPackage, int length) {
     int answer_result, bytesWritten, attempts = LLayer->numMaxTransmissions, validAnswer = FALSE;
     unsigned char UA_ACK_RECEIVED[5], UA_ACK_EXPECTED[5], POSSIBLE_REJ[5];
-    
-    //FILE* oFile = fopen("enviado", "ab"); /* TODO: remover */
-    
+        
     if(LLayer->sequenceNumber == 0) {
         memcpy(UA_ACK_EXPECTED, UA_ACK_1, 5); /* waits for the next frame */
         memcpy(POSSIBLE_REJ, UA_REJ_0, 5);
@@ -422,20 +420,19 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
         
 		//VERIFICAR A RESPOSTA
         
-		validAnswer=TRUE;
-        
 		answer_result=llread(fd,UA_ACK_RECEIVED,5);
         
 		if(answer_result == 5)
 		{
-            if(memcmp(UA_ACK_RECEIVED, UA_ACK_EXPECTED, 5) != 0) {
-                validAnswer = FALSE;
-                break;
-            }
+            if(memcmp(UA_ACK_RECEIVED, UA_ACK_EXPECTED, 5) == 0)
+                validAnswer = TRUE;
      
-            if(memcmp(UA_ACK_RECEIVED, POSSIBLE_REJ, 5) == 0)
+            else if(memcmp(UA_ACK_RECEIVED, POSSIBLE_REJ, 5) == 0) {
                 validAnswer = FALSE;
                 LLayer->numReceivedREJ++;
+            }
+            else
+                validAnswer = FALSE;
 		}
 		else
 		{
