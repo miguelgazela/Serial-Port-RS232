@@ -1,6 +1,7 @@
 #ifndef LINK_H
 #define LINK_H
 
+#include <linux/serial.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,7 +9,6 @@
 #include <fcntl.h>
 #include <time.h>
 #include <termios.h>
-#include <linux/serial.h>
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include "defs.h"
@@ -40,8 +40,9 @@ typedef struct {
     unsigned int timeout;
     unsigned int numMaxTransmissions;
     unsigned long int numTimeouts;
-    unsigned long int numReceivedREJ;
-    unsigned long long int totalBytesSent;
+    unsigned long long int numReceivedREJ;
+    unsigned long long int numRetransmittedFrames;
+    unsigned long long int totalDataSent;
 } linkLayer;
 
 linkLayer* LLayer;
