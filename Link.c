@@ -44,8 +44,8 @@ void createNewLinkLayerOptions(char* portname, int baudrate, unsigned int numMax
     LLayer->timeout = timeout;
     
     if(DEBUG_LINK) {
-        printf("Defined new max number of transmissions: %d\n", LLayer->numMaxTransmissions);
-        printf("Defined new timeout time: %d\n", LLayer->timeout);
+        printf("Max number of retransmissions: %d\n", LLayer->numMaxTransmissions);
+        printf("Timeout time: %d\n", LLayer->timeout);
         // falta o do baudrate
     }
 }
@@ -59,7 +59,7 @@ int changeBaudrate(int fd)
     //Obter configurações da porta de série
     if (ioctl(fd, TIOCGSERIAL, &serial_port_info) < 0)
     {
-        perror("Impossivel obter configs. da porta de serie. Continuando a utilizar baudrate por defeito.\n");
+        perror("It's impossible to obtain serial port configs. Using default baudrate.\n");
         return -1;
     }
     
@@ -73,7 +73,7 @@ int changeBaudrate(int fd)
     
     if (actual_baudrate < LLayer->baudrate * 0.95 || actual_baudrate > LLayer->baudrate * 1.05)
     {
-        printf("Nao e possivel definir uma baudrate satisfatoriamente proxima da especificada. Continuando a utilizar a baudrate por defeito.\n");
+        printf("It's impossible to define a satisfactory baudrate near the specified. Using default baudrate.\n");
         return -1;
     }
     
@@ -84,7 +84,7 @@ int changeBaudrate(int fd)
     //Definir configurações da porta de série
     if (ioctl(fd, TIOCSSERIAL, &serial_port_info) < 0)
     {
-        perror("Impossível definir configs da porta de série. Continuando a baudrate por defeito.\n");
+        perror("It's impossible to obtain serial port configs. Using default baudrate.\n");
         return -1;
     }
     else
@@ -99,21 +99,21 @@ int changeBaudrate(int fd)
 
 int resetBaudrate(int fd)
 {
-        struct serial_struct serial_port_info;
+    struct serial_struct serial_port_info;
 
-	    if (ioctl(fd, TIOCGSERIAL, &serial_port_info) < 0)
-	    {
-		perror("Impossivel obter configs. da porta de serie. Impossível colocar a baudrate no seu valor por defeito.\n");
-		return -1;
-	    }
+    if (ioctl(fd, TIOCGSERIAL, &serial_port_info) < 0)
+    {
+        perror("It's impossible to obtain serial port configs. Failed to reset the baudrate to it's default value.\n");
+        return -1;
+    }
 
-	   serial_port_info.flags &= ~ASYNC_SPD_MASK;
+    serial_port_info.flags &= ~ASYNC_SPD_MASK;
 
-	   if (ioctl(fd, TIOCSSERIAL, &serial_port_info) < 0)
-	    {
-		perror("Impossível colocar a baudrate no seu valor por defeito.\n");
-		return -1;
-	    }
+    if (ioctl(fd, TIOCSSERIAL, &serial_port_info) < 0)
+    {
+        perror("Failed to reset the baudrate to it's default value.\n");
+        return -1;
+    }
 	return 0;
 }
 
@@ -162,13 +162,12 @@ void prepareFrameToSend(unsigned char* buffer, int length) {
         if (buffer[bufferIterator] == FLAG || buffer[bufferIterator] == ESC)
             bytesStuffed++;
     
-    if(DEBUG_LINK)
-        printf("Number of stuffed bytes: %d\n", bytesStuffed);
-    
     extraPackageFieldSize = (length - 2) + bytesStuffed + 3; /* 3 for the BCC2[2] and the FLAG at the end*/
     
-    if(DEBUG_LINK)
-        printf("Extra package field size: %d\n", extraPackageFieldSize);
+    if(DEBUG_LINK) {
+        printf("Number of package field bytes stuffed: %d\n", bytesStuffed);
+        printf("Extra package field size: %d bytes\n", extraPackageFieldSize);
+    }
     
     frameToSend = (dataFrame*)malloc(sizeof(dataFrame) + extraPackageFieldSize);
     
@@ -209,9 +208,9 @@ void prepareFrameToSend(unsigned char* buffer, int length) {
     frameToSend->packageField[frameToSend->extraPackageFieldSize+1] = FLAG;
     
     if(DEBUG_LINK) {
-        printf("struct 'dataframe' size: %d bytes\tActual bytes sent: %d\n", (int)sizeof(dataFrame),  (int)sizeof(dataFrame) + extraPackageFieldSize);
-        printf("Confirm BCC2[0]: 0x%X BCC2[1]: 0x%X\n", frameToSend->packageField[frameToSend->extraPackageFieldSize-1], frameToSend->packageField[frameToSend->extraPackageFieldSize]);
-        printf("Confirm FLAG at package field tail: 0x%X\n\n",  frameToSend->packageField[frameToSend->extraPackageFieldSize+1]);
+        printf("Total data frame size: %d bytes\n", (int)sizeof(dataFrame),  (int)sizeof(dataFrame) + extraPackageFieldSize);
+        printf("BCC2[0]: 0x%X BCC2[1]: 0x%X\n", frameToSend->packageField[frameToSend->extraPackageFieldSize-1], frameToSend->packageField[frameToSend->extraPackageFieldSize]);
+        printf("FLAG at data frame tail: 0x%X\n\n",  frameToSend->packageField[frameToSend->extraPackageFieldSize+1]);
     }
 }
 
@@ -263,6 +262,9 @@ int llopen() {
         return -1;
     }
     
+    if(DEBUG_LINK)
+        printf("Opening serial port %s\n", LLayer->port);
+    
     do {
 		setAttempts = LLayer->numMaxTransmissions;
 		remaining = 5;
@@ -275,10 +277,10 @@ int llopen() {
 		
 		if(remaining == 0) {
             if(DEBUG_LINK)
-                printf("SET_COMMAND SENT!\n");
+                printf("SET_COMMAND sent!\n");
         }
 		else {
-			printf("CAN'T SEND SET_COMMAND.\n");
+			printf("Can't send SET_COMMAND.\n");
 			return -1;
 		}
 		
@@ -289,6 +291,9 @@ int llopen() {
 		
 		while(TRUE)
 		{
+            if(DEBUG_LINK)
+                printf("Waiting for UA RESPONSE\n");
+            
 			Timeout.tv_sec = (long int) remainingTime;
 			Timeout.tv_usec = (remainingTime - Timeout.tv_sec) * 1000000;
 			FD_SET(fd,&readfs);
@@ -351,6 +356,9 @@ int llclose(int fd) {
 	time_t initialTime = time(NULL);
 	double remainingTime = LLayer->timeout;
 	unsigned char DISC_RESPONSE[5];
+    
+    if(DEBUG_LINK)
+        printf("Closing serial port %s\n", LLayer->port);
 	
     do {
         
@@ -365,11 +373,11 @@ int llclose(int fd) {
 		
 		if(remaining == 0) {
             if(DEBUG_LINK)
-                printf("DISC_COMMAND SENT!\n");
+                printf("DISC_COMMAND sent!\n");
         }
 		else
 		{
-			printf("CAN'T SEND DISC_COMMAND.\n");
+			printf("Can't send DISC_COMMAND.\n");
 			resetBaudrate(fd);
 			return -1;
 		}
@@ -381,6 +389,9 @@ int llclose(int fd) {
 		
 		while(TRUE)
 		{
+            if(DEBUG_LINK)
+                printf("Waiting for DISC RESPONSE\n");
+            
 			Timeout.tv_sec = (long int) remainingTime;
 			Timeout.tv_usec = (remainingTime - Timeout.tv_sec) * 1000000;
 			FD_SET(fd,&readfs);
@@ -435,11 +446,11 @@ int llclose(int fd) {
 			}
 			if(remaining==0) {
                 if(DEBUG_LINK)
-                    printf("UA_COMMAND SENT!\n");
+                    printf("UA_COMMAND sent!\n");
             }
 			else
 			{
-				printf("CAN'T SEND UA_COMMAND.\n");
+				printf("Can't send UA_COMMAND.\n");
 				resetBaudrate(fd);
 				return -1;
 			}
@@ -486,8 +497,9 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
     
     while(validAnswer==FALSE && attempts>0)
 	{
-		//ENVIAR
-        	printf("SENDIND FRAME\n");
+		//SENDING FRAME
+        printf("Sending New Frame - Sequence Number: %d\n", LLayer->sequenceNumber);
+        
 		bytesWritten = write(fd, frameToSend, sizeof(dataFrame) + frameToSend->extraPackageFieldSize);
         
 		if(bytesWritten < sizeof(dataFrame) + frameToSend->extraPackageFieldSize)
@@ -497,35 +509,50 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
 			continue;
 		}
         
-		//VERIFICAR A RESPOSTA
-        	printf("READING RESPONSE\n");
-		answer_result=llread(fd,UA_ACK_RECEIVED,5);
+		//CHECKING ANSWER
+        
+        printf("Reading Response\n");
+		answer_result = llread(fd,UA_ACK_RECEIVED,5);
 
-		printf("ANSWER: %X %X %X %X %X\n", UA_ACK_RECEIVED[0], UA_ACK_RECEIVED[1], UA_ACK_RECEIVED[2], UA_ACK_RECEIVED[3], UA_ACK_RECEIVED[4]);
 		if(answer_result == 5)
 		{
 		    if(memcmp(UA_ACK_RECEIVED, UA_ACK_EXPECTED, 5) == 0)
 		        validAnswer = TRUE;
 	     
 		    else if(memcmp(UA_ACK_RECEIVED, POSSIBLE_REJ, 5) == 0) {
-		        validAnswer = FALSE; 	
-			if(DEBUG_LINK)
-				printf("RECEIVED A REJ. SENDING SAME FRAME AGAIN.\n");
-		        LLayer->numReceivedREJ++;
-		    }
+		        validAnswer = FALSE;
+                
+                if(DEBUG_LINK) {
+                    if(attempts > 1)
+                        printf("Received REJ response. Sending same frame again\n");
+                    else
+                        printf("Received REJ response. No more attempts of retransmission are allowed\n");
+                }
+		        
+                LLayer->numReceivedREJ++;
+            }
 		    else {
-			
+                if(DEBUG_LINK) {
+                    if(attempts > 1)
+                        printf("Received invalid response. Sending same frame again\n");
+                    else
+                        printf("Received invalid response. No more attempts of retransmission are allowed\n");
+                }
 		        validAnswer = FALSE;
 			}
 		}
 		else
 		{
+            if(DEBUG_LINK) {
+                if(attempts > 1)
+                    printf("Couldn't receive a possible response. Sending same frame again\n");
+                else
+                    printf("Couldn't receive a possible response. No more attempts of retransmission are allowed\n");
+            }
 			validAnswer=FALSE;
 		}
         
 		attempts--;
-		if(validAnswer == FALSE)
-			printf("TRY SENDING THE SAME FRAME AGAIN\n");
 	}
     
     free(frameToSend);
