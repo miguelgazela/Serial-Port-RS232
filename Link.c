@@ -208,7 +208,7 @@ void prepareFrameToSend(unsigned char* buffer, int length) {
     frameToSend->packageField[frameToSend->extraPackageFieldSize+1] = FLAG;
     
     if(DEBUG_LINK) {
-        printf("Total data frame size: %d bytes\n", (int)sizeof(dataFrame),  (int)sizeof(dataFrame) + extraPackageFieldSize);
+        printf("Total data frame size: %d bytes\n", (int)sizeof(dataFrame) + extraPackageFieldSize);
         printf("BCC2[0]: 0x%X BCC2[1]: 0x%X\n", frameToSend->packageField[frameToSend->extraPackageFieldSize-1], frameToSend->packageField[frameToSend->extraPackageFieldSize]);
         printf("FLAG at data frame tail: 0x%X\n\n",  frameToSend->packageField[frameToSend->extraPackageFieldSize+1]);
     }
