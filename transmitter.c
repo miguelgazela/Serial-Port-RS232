@@ -148,7 +148,6 @@ int main(int argc, char* argv[]) {
             printf("File %s sent with success.\n\n", app->filename);
         
         free(str);
-            
     }
    
     free(app);
