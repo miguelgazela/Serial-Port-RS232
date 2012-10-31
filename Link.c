@@ -481,7 +481,7 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
     while(validAnswer==FALSE && attempts>0)
 	{
 		//ENVIAR
-        	printf("VAI ESCREVER A TRAMA\n");
+        	printf("SENDIND FRAME\n");
 		bytesWritten = write(fd, frameToSend, sizeof(dataFrame) + frameToSend->extraPackageFieldSize);
         
 		if(bytesWritten < sizeof(dataFrame) + frameToSend->extraPackageFieldSize)
@@ -492,9 +492,10 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
 		}
         
 		//VERIFICAR A RESPOSTA
-        	printf("VAI LER A TRAMA\n");
+        	printf("READING RESPONSE\n");
 		answer_result=llread(fd,UA_ACK_RECEIVED,5);
 
+		printf("ANSWER: %X %X %X %X %X\n", UA_ACK_RECEIVED[0], UA_ACK_RECEIVED[1], UA_ACK_RECEIVED[2], UA_ACK_RECEIVED[3], UA_ACK_RECEIVED[4]);
 		if(answer_result == 5)
 		{
 		    if(memcmp(UA_ACK_RECEIVED, UA_ACK_EXPECTED, 5) == 0)
@@ -518,7 +519,7 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
         
 		attempts--;
 		if(validAnswer == FALSE)
-			printf("TRY AGAIN\n");
+			printf("TRY SENDING THE SAME FRAME AGAIN\n");
 	}
     
     free(frameToSend);
