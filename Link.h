@@ -8,7 +8,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <termios.h>
-#include <serial.h>
+#include <linux/serial.h>
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include "defs.h"

@@ -170,6 +170,7 @@ int sendFile(applicationLayer* app) {
     
     if (result < 0) {
         printf("Package control delivery failed.\n");
+	llclose(app->fileDescriptor);
         exit(-1);
     }
 

@@ -9,10 +9,10 @@
 
 typedef struct {
 	unsigned char C, T_Size, L_Size;
-    unsigned long long int V_Size;
+	unsigned long long int V_Size;
 	unsigned char T_Name, L_Name;
-    char V_Name[MAX_FILENAME];
-    unsigned char T_Pkg, L_Pkg;
+	char V_Name[MAX_FILENAME];
+   	unsigned char T_Pkg, L_Pkg;
 	unsigned long long int V_Pkg;
 } controlPackage;
 

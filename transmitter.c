@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
     int baudrate = -1;
     char* nameFile;
     
-    if(argc != 3 && argc != 2 && argc != 4 && argc != 6) {
+    if(argc != 3 && argc != 2 && argc != 4 && argc != 5 && argc != 6) {
         printf("USAGE:\n");
 		printf("\ttransmitter <portname>\n");
 		printf("\ttransmitter <portname> <filename>\n");

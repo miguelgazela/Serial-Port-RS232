@@ -91,6 +91,26 @@ int changeBaudrate(int fd)
     }
 }
 
+int resetBaudrate(int fd)
+{
+        struct serial_struct serial_port_info;
+
+	    if (ioctl(fd, TIOCGSERIAL, &serial_port_info) < 0)
+	    {
+		perror("Impossivel obter configs. da porta de serie. Impossível colocar a baudrate no seu valor por defeito.\n");
+		return -1;
+	    }
+
+	   serial_port_info.flags &= ~ASYNC_SPD_MASK;
+
+	   if (ioctl(fd, TIOCSSERIAL, &serial_port_info) < 0)
+	    {
+		perror("Impossível colocar a baudrate no seu valor por defeito.\n");
+		return -1;
+	    }
+	return 0;
+}
+
 void prepareFrameToSend(unsigned char* buffer, int length) {
     unsigned int bufferIterator,packageFieldIterator, bytesStuffed = 0, extraPackageFieldSize;
     unsigned char BCC1,BCC2;
@@ -344,6 +364,7 @@ int llclose(int fd) {
 		else
 		{
 			printf("CAN'T SEND DISC_COMMAND.\n");
+			resetBaudrate(fd);
 			return -1;
 		}
 		
@@ -364,6 +385,7 @@ int llclose(int fd) {
 			
 			if(selectResult == 0) {
 				printf("Timeout ocurred. Can't close connection\n");
+				resetBaudrate(fd);
 				return(-1);
 			}
 			
@@ -412,6 +434,7 @@ int llclose(int fd) {
 			else
 			{
 				printf("CAN'T SEND UA_COMMAND.\n");
+				resetBaudrate(fd);
 				return -1;
 			}
 		}
@@ -423,13 +446,16 @@ int llclose(int fd) {
 	if (validResponse == FALSE)
 	{
 		printf("Can't get a valid disconnection response.\n");
+		resetBaudrate(fd);
 		return -1;
 	}
 	
+	resetBaudrate(fd);
+
 	if (tcsetattr(fd,TCSANOW,&oldtio) == -1) {
-        perror("tcsetattr");
-        return -1;
-    }
+        	perror("tcsetattr");
+       	 	return -1;
+    	}
     
     return close(fd);
 }
@@ -452,14 +478,10 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
     newtio.c_oflag = OPOST;
     tcsetattr(fd, TCSANOW, &newtio);
     
-    //bytesWritten = fwrite(frameToSend, 1, sizeof(dataFrame) + frameToSend->extraPackageFieldSize, oFile); /* TODO: remover */
-    
-    //fclose(oFile);
-    
     while(validAnswer==FALSE && attempts>0)
 	{
 		//ENVIAR
-        
+        	printf("VAI ESCREVER A TRAMA\n");
 		bytesWritten = write(fd, frameToSend, sizeof(dataFrame) + frameToSend->extraPackageFieldSize);
         
 		if(bytesWritten < sizeof(dataFrame) + frameToSend->extraPackageFieldSize)
@@ -470,20 +492,24 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
 		}
         
 		//VERIFICAR A RESPOSTA
-        
+        	printf("VAI LER A TRAMA\n");
 		answer_result=llread(fd,UA_ACK_RECEIVED,5);
-        
+
 		if(answer_result == 5)
 		{
-            if(memcmp(UA_ACK_RECEIVED, UA_ACK_EXPECTED, 5) == 0)
-                validAnswer = TRUE;
-     
-            else if(memcmp(UA_ACK_RECEIVED, POSSIBLE_REJ, 5) == 0) {
-                validAnswer = FALSE;
-                LLayer->numReceivedREJ++;
-            }
-            else
-                validAnswer = FALSE;
+		    if(memcmp(UA_ACK_RECEIVED, UA_ACK_EXPECTED, 5) == 0)
+		        validAnswer = TRUE;
+	     
+		    else if(memcmp(UA_ACK_RECEIVED, POSSIBLE_REJ, 5) == 0) {
+		        validAnswer = FALSE; 	
+			if(DEBUG_LINK)
+				printf("RECEIVED A REJ. SENDING SAME FRAME AGAIN.\n");
+		        LLayer->numReceivedREJ++;
+		    }
+		    else {
+			
+		        validAnswer = FALSE;
+			}
 		}
 		else
 		{
@@ -491,14 +517,9 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
 		}
         
 		attempts--;
+		if(validAnswer == FALSE)
+			printf("TRY AGAIN\n");
 	}
-    
-    /*
-    LLayer->sequenceNumber = (LLayer->sequenceNumber + 1) % 2; // 0+1%2=1, 1+1%2=0
-    LLayer->totalBytesSent += bytesWritten;
-    free(frameToSend);
-    return bytesWritten;
-     */
     
     free(frameToSend);
     
