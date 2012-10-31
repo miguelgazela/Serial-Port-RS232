@@ -50,6 +50,7 @@ void createNewLinkLayerOptions(char* portname, int baudrate, unsigned int numMax
     }
 }
 
+
 int changeBaudrate(int fd)
 {
     struct serial_struct serial_port_info;
@@ -94,6 +95,7 @@ int changeBaudrate(int fd)
         return 0;
     }
 }
+ 
 
 int resetBaudrate(int fd)
 {

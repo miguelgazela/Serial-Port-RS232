@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
                 break;
                 
             case 'r': // num of retransmissions
-                if((maxTransmissions = atoi(&argv[1][2])) == 0)
+                if((maxRetransmissions = atoi(&argv[1][2])) == 0)
                     printf("The max number of retransmissions is invalid. The default value will be used (3).\n");
                 break;
                 
@@ -95,9 +95,8 @@ int main(int argc, char* argv[]) {
         
         ++argv;
         --tempArgc;
-        }
     }
-    
+
     if(hasFilename == FALSE) {
         printf("The program needs the name of the file to send.\n");
         return(-1);
@@ -127,7 +126,7 @@ int main(int argc, char* argv[]) {
         printf("File %s opened with success.\n", app->filename);
         
         /* create the link layer */
-        createNewLinkLayerOptions(portname, baudrate, maxTransmissions, timeoutTime);
+        createNewLinkLayerOptions(portname, baudrate, maxRetransmissions, timeoutTime);
         
         char* str = calculateSize(app->originalFileSize);
         printf("\nSending file '%s' with size: %s\n", app->filename, str);
@@ -137,12 +136,12 @@ int main(int argc, char* argv[]) {
         str = calculateSize(LLayer->totalDataSent);
         printf("Total data sent (including package and frame headers): %s\n", str);
         
-        str = calculateSize(LLayer->totalBytesSent - app->originalFileSize);
+        str = calculateSize(LLayer->totalDataSent - app->originalFileSize);
         printf("Extra data sent (not file data): %s\n", str);
         
         printf("Total packages sent: %lld of %lld\n", app->packetsSent, app->ctrlPkg.V_Pkg);
         printf("Number of timeout occurrences: %ld\n", LLayer->numTimeouts);
-        printf("Number of received REJ responses: %ld\n", LLayer->numReceivedREJ);
+        printf("Number of received REJ responses: %lld\n", LLayer->numReceivedREJ);
         printf("Number of retransmitted frames: %lld\n", LLayer->numRetransmittedFrames);
         
         if(functionResult >= 0)
