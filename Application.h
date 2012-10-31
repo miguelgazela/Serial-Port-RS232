@@ -40,9 +40,6 @@ applicationLayer* getNewApplicationLayer();
 void setAs(applicationLayer* app, int flag);
 int getStatus(const applicationLayer* app);
 
-void setFileDescriptor(applicationLayer* app, int fd);
-int getFileDescriptor(const applicationLayer* app);
-
 int openFile(applicationLayer* app, char* filename);
 int sendFile(applicationLayer* app);
 

@@ -16,7 +16,7 @@ void prepareFrameToSend(unsigned char* buffer, int length);
 dataFrame* frameToSend;
 
 void createNewLinkLayer(char* portname) {
-    /* alocate memory */
+    
     LLayer = (linkLayer*) malloc (sizeof(linkLayer));
     
     if(LLayer == NULL) {
@@ -30,19 +30,23 @@ void createNewLinkLayer(char* portname) {
     LLayer->baudrate = -1;
     LLayer->timeout = DEFAULT_TIMEOUT;
     LLayer->sequenceNumber = 0;
-    LLayer->totalBytesSent = 0;
+    LLayer->totalDataSent = 0;
     LLayer->numTimeouts = 0;
     LLayer->numReceivedREJ = 0;
+    LLayer->numRetransmittedFrames = 0;
 }
 
 void createNewLinkLayerOptions(char* portname, int baudrate, unsigned int numMaxTransmissions, unsigned int timeout) {
     createNewLinkLayer(portname);
+    
     LLayer->baudrate = baudrate;
     LLayer->numMaxTransmissions = numMaxTransmissions;
     LLayer->timeout = timeout;
+    
     if(DEBUG_LINK) {
         printf("Defined new max number of transmissions: %d\n", LLayer->numMaxTransmissions);
         printf("Defined new timeout time: %d\n", LLayer->timeout);
+        // falta o do baudrate
     }
 }
 
@@ -527,7 +531,7 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
 	if(validAnswer)
 	{
 		LLayer->sequenceNumber = (LLayer->sequenceNumber + 1) % 2; // 0+1%2=1, 1+1%2=0
-        LLayer->totalBytesSent += bytesWritten;
+        LLayer->totalDataSent += bytesWritten;
 		return length;
 	}
 	else
