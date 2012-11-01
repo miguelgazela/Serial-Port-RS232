@@ -33,6 +33,8 @@ void createNewLinkLayer(char* portname) {
     LLayer->numReceivedREJ = 0;
     LLayer->numRetransmittedFrames = 0;
     LLayer->debugMode = FALSE;
+    LLayer->wrongBCC2rate = 0;
+    LLayer->BCC2wasWrong = FALSE;
 }
 
 void createNewLinkLayerOptions(char* portname, int baudrate, unsigned int numMaxTransmissions, unsigned int timeout) {
@@ -114,6 +116,15 @@ int resetBaudrate(int fd)
         return -1;
     }
 	return 0;
+}
+
+int sendWrongBCC2() {
+    srand(time(NULL));
+    
+    if((rand() % 100 + 1) <= LLayer->wrongBCC2rate)
+        return TRUE;
+    
+    return FALSE;
 }
 
 void prepareFrameToSend(unsigned char* buffer, int length) {
@@ -203,6 +214,21 @@ void prepareFrameToSend(unsigned char* buffer, int length) {
     }
     
     /* set frame tail */
+    
+    /* check if it will send a wrong BCC2 value */
+    if(sendWrongBCC2() == TRUE) {
+        LLayer->BCC2wasWrong = TRUE;
+        memcpy(LLayer->rightBCC2, tempBCC2, 2);
+        
+        if(LLayer->debugMode)
+            printf("This frame has a wrong BCC2. It can't be accepted by the receiver.\n");
+        
+        if(tempBCC2[0] == 0)
+            tempBCC2[0] = 1;
+        else
+            tempBCC2[0] = 0;
+    }
+    
     memcpy(&frameToSend->packageField[frameToSend->extraPackageFieldSize-1], tempBCC2, 2);
     frameToSend->packageField[frameToSend->extraPackageFieldSize+1] = FLAG;
     
@@ -502,9 +528,15 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
         
 		bytesWritten = write(fd, frameToSend, sizeof(dataFrame) + frameToSend->extraPackageFieldSize);
         
+        if(LLayer->BCC2wasWrong == TRUE) {
+            LLayer->BCC2wasWrong = FALSE;
+            memcpy(&frameToSend->packageField[frameToSend->extraPackageFieldSize-1], LLayer->rightBCC2, 2);
+        }
+        
 		if(bytesWritten < sizeof(dataFrame) + frameToSend->extraPackageFieldSize)
 		{
-			validAnswer=FALSE;
+            printf("\n\n\nNAO DEVIA CHEGAR AQUI!!!!!!!!!!!!\n\n\n"); // TODO REMOVER!!!
+			validAnswer = FALSE;
 			attempts--;
 			continue;
 		}

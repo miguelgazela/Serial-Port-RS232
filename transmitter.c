@@ -41,7 +41,7 @@ void usage() {
 int main(int argc, char* argv[]) {
     unsigned int functionResult, fileblocksize = REGULAR_SIZE_DATAFIELD;
     unsigned int maxRetransmissions = DEFAULT_MAX_ATTEMPTS, timeoutTime = DEFAULT_TIMEOUT;
-    int baudrate = -1, hasFilename = FALSE, hasPortname = FALSE, tempArgc = argc, DEBUG_LINK = FALSE;
+    int baudrate = -1, hasFilename = FALSE, hasPortname = FALSE, tempArgc = argc, DEBUG_LINK = FALSE, wrongBCC2 = 0;
     char *filename, *portname;
     
     /* creating the application layer */
@@ -87,11 +87,19 @@ int main(int argc, char* argv[]) {
                 if((baudrate = atoi(&argv[1][2])) == 0)
                     printf("The baudrate is invalid. The default value will be used (%d).\n",DEFAULT_BAUDRATE);
                 break;
+                
             case 'd': { // DEBUG MODE
                 app->debugMode = TRUE;
                 DEBUG_LINK = TRUE;
             }
                 break;
+                
+            case 'w': { // Wrong BCC2 Rate
+                if((wrongBCC2 = atoi(&argv[1][2])) > 100) {
+                    printf("The wrong BCC2 rate is invalid. The default value will be used (0\%)\n");
+                    wrongBCC2 = 0;
+                }
+            }
                 
             default:
                 printf("Wrong Argument: %s\n", &argv[1][2]);
@@ -137,6 +145,7 @@ int main(int argc, char* argv[]) {
         /* create the link layer */
         createNewLinkLayerOptions(portname, baudrate, maxRetransmissions, timeoutTime);
         LLayer->debugMode = DEBUG_LINK;
+        LLayer->wrongBCC2rate = wrongBCC2rate;
         
         char* str = calculateSize(app->originalFileSize);
         printf("\nSending file '%s' with size: %s\n", app->filename, str);
