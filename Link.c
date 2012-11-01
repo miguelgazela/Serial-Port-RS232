@@ -42,7 +42,7 @@ void createNewLinkLayerOptions(char* portname, int baudrate, unsigned int numMax
     LLayer->numMaxTransmissions = numMaxTransmissions;
     LLayer->timeout = timeout;
     
-    printf("---- LINK LAYER SETTINGS ----\n");
+    printf("\n---- LINK LAYER SETTINGS ----\n");
     printf("Max number of retransmissions: %d\n", LLayer->numMaxTransmissions);
     printf("Timeout time: %d\n", LLayer->timeout);
     printf("Baudrate: %d\n", LLayer->baudrate);
@@ -357,7 +357,7 @@ int llclose(int fd) {
 	unsigned char DISC_RESPONSE[5];
     
     if(LLayer->debugMode)
-        printf("Closing serial port %s\n", LLayer->port);
+        printf("\nClosing serial port %s\n", LLayer->port);
 	
     do {
         
@@ -400,7 +400,7 @@ int llclose(int fd) {
 			remainingTime = LLayer->timeout - difftime(time(NULL),initialTime);
 			
 			if(selectResult == 0) {
-				printf("Timeout ocurred. Can't close connection\n");
+				printf("Timeout ocurred\n");
 				resetBaudrate(fd);
 				return(-1);
 			}
