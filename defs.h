@@ -15,4 +15,7 @@
 
 #define DIM(x) (sizeof(x)/sizeof(*(x)))
 
+int DEBUG_APP = FALSE;
+int DEBUG_LINK = FALSE;
+
 #endif
