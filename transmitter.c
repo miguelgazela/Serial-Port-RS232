@@ -41,7 +41,7 @@ void usage() {
 int main(int argc, char* argv[]) {
     unsigned int functionResult, fileblocksize = REGULAR_SIZE_DATAFIELD;
     unsigned int maxRetransmissions = DEFAULT_MAX_ATTEMPTS, timeoutTime = DEFAULT_TIMEOUT;
-    int baudrate = -1, hasFilename = FALSE, hasPortname = FALSE, tempArgc = argc, DEBUG_LINK = FALSE, wrongBCC2 = 0;
+    int baudrate = -1, hasFilename = FALSE, hasPortname = FALSE, tempArgc = argc, DEBUG_LINK = FALSE, wrongBCC2rate = 0;
     char *filename, *portname;
     
     /* creating the application layer */
@@ -95,9 +95,9 @@ int main(int argc, char* argv[]) {
                 break;
                 
             case 'w': { // Wrong BCC2 Rate
-                if((wrongBCC2 = atoi(&argv[1][2])) > 100) {
-                    printf("The wrong BCC2 rate is invalid. The default value will be used (0\%)\n");
-                    wrongBCC2 = 0;
+                if((wrongBCC2rate = atoi(&argv[1][2])) > 100) {
+                    printf("The wrong BCC2 rate is invalid. The default value will be used (0%%)\n");
+                    wrongBCC2rate = 0;
                 }
             }
                 
