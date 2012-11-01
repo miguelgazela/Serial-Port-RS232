@@ -553,6 +553,9 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
 			validAnswer=FALSE;
 		}
         
+        if(!validAnswer && attempts > 1)
+            LLayer->numRetransmittedFrames++;
+        
 		attempts--;
 	}
     
