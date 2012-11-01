@@ -155,7 +155,7 @@ int sendFile(applicationLayer* app) {
             app->ctrlPkg.C = C_END;
             
             if(app->debugMode)
-                printf("Sending package control (END)\n");
+                printf("\nSending package control (END)\n");
             
             result = llwrite(app->fileDescriptor, (unsigned char*)&app->ctrlPkg, sizeof(controlPackage));
             

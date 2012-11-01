@@ -143,11 +143,10 @@ int main(int argc, char* argv[]) {
         
         functionResult = sendFile(app);
         
+        printf("FUNCTION_RESULT = %d\n", functionResult);
+        
         str = calculateSize(LLayer->totalDataSent);
         printf("\nTotal data sent (including package and frame headers): %s\n", str);
-        
-        if(app == NULL)
-            printf("O APONTADOR È NULO!\n");
         
         str = calculateSize(LLayer->totalDataSent - app->originalFileSize);
         printf("Extra data sent (not file data): %s\n", str);
