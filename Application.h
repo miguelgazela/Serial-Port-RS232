@@ -28,6 +28,7 @@ typedef struct {
     unsigned long long int originalFileSize, packetsSent; /* 64 bits */
     unsigned char* buff;
     controlPackage ctrlPkg;
+    int debugMode;
 } applicationLayer;
 
 enum statusFlags {TRANSMITTER, RECEIVER};

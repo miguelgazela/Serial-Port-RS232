@@ -32,6 +32,7 @@ void createNewLinkLayer(char* portname) {
     LLayer->numTimeouts = 0;
     LLayer->numReceivedREJ = 0;
     LLayer->numRetransmittedFrames = 0;
+    LLayer->debugMode = FALSE;
 }
 
 void createNewLinkLayerOptions(char* portname, int baudrate, unsigned int numMaxTransmissions, unsigned int timeout) {
@@ -41,11 +42,10 @@ void createNewLinkLayerOptions(char* portname, int baudrate, unsigned int numMax
     LLayer->numMaxTransmissions = numMaxTransmissions;
     LLayer->timeout = timeout;
     
-    if(DEBUG_LINK) {
-        printf("Max number of retransmissions: %d\n", LLayer->numMaxTransmissions);
-        printf("Timeout time: %d\n", LLayer->timeout);
-        // falta o do baudrate
-    }
+    printf("---- LINK LAYER SETTINGS ----\n");
+    printf("Max number of retransmissions: %d\n", LLayer->numMaxTransmissions);
+    printf("Timeout time: %d\n", LLayer->timeout);
+    printf("Baudrate: %d\n", LLayer->baudrate);
 }
 
 
@@ -162,7 +162,7 @@ void prepareFrameToSend(unsigned char* buffer, int length) {
     
     extraPackageFieldSize = (length - 2) + bytesStuffed + 3; /* 3 for the BCC2[2] and the FLAG at the end*/
     
-    if(DEBUG_LINK) {
+    if(LLayer->debugMode) {
         printf("Number of package field bytes stuffed: %d\n", bytesStuffed);
         printf("Extra package field size: %d bytes\n", extraPackageFieldSize);
     }
@@ -205,7 +205,7 @@ void prepareFrameToSend(unsigned char* buffer, int length) {
     memcpy(&frameToSend->packageField[frameToSend->extraPackageFieldSize-1], tempBCC2, 2);
     frameToSend->packageField[frameToSend->extraPackageFieldSize+1] = FLAG;
     
-    if(DEBUG_LINK) {
+    if(LLayer->debugMode) {
         printf("Total data frame size: %d bytes\n", (int)sizeof(dataFrame) + extraPackageFieldSize);
         printf("BCC2[0]: 0x%X BCC2[1]: 0x%X\n", frameToSend->packageField[frameToSend->extraPackageFieldSize-1], frameToSend->packageField[frameToSend->extraPackageFieldSize]);
         printf("FLAG at data frame tail: 0x%X\n\n",  frameToSend->packageField[frameToSend->extraPackageFieldSize+1]);
@@ -260,7 +260,7 @@ int llopen() {
         return -1;
     }
     
-    if(DEBUG_LINK)
+    if(LLayer->debugMode)
         printf("\nOpening serial port %s\n", LLayer->port);
     
     do {
@@ -274,7 +274,7 @@ int llopen() {
 		}
 		
 		if(remaining == 0) {
-            if(DEBUG_LINK)
+            if(LLayer->debugMode)
                 printf("SET_COMMAND sent!\n");
         }
 		else {
@@ -289,7 +289,7 @@ int llopen() {
 		
 		while(TRUE)
 		{
-            if(DEBUG_LINK)
+            if(LLayer->debugMode)
                 printf("Waiting for UA RESPONSE\n");
             
 			Timeout.tv_sec = (long int) remainingTime;
@@ -331,7 +331,7 @@ int llopen() {
 		if(validUAresponse == TRUE)
 		{
 			validResponse = TRUE;
-            if(DEBUG_LINK)
+            if(LLayer->debugMode)
                 printf("Port %s is open!\n\n", LLayer->port);
 		}
 		else
@@ -355,7 +355,7 @@ int llclose(int fd) {
 	double remainingTime = LLayer->timeout;
 	unsigned char DISC_RESPONSE[5];
     
-    if(DEBUG_LINK)
+    if(LLayer->debugMode)
         printf("Closing serial port %s\n", LLayer->port);
 	
     do {
@@ -370,7 +370,7 @@ int llclose(int fd) {
 		}
 		
 		if(remaining == 0) {
-            if(DEBUG_LINK)
+            if(LLayer->debugMode)
                 printf("DISC_COMMAND sent!\n");
         }
 		else
@@ -387,7 +387,7 @@ int llclose(int fd) {
 		
 		while(TRUE)
 		{
-            if(DEBUG_LINK)
+            if(LLayer->debugMode)
                 printf("Waiting for DISC RESPONSE\n");
             
 			Timeout.tv_sec = (long int) remainingTime;
@@ -428,7 +428,7 @@ int llclose(int fd) {
 		if(validDISCresponse == TRUE)
 		{
 			validResponse = TRUE;
-            if(DEBUG_LINK)
+            if(LLayer->debugMode)
                 printf("Port %s is closing.\n", LLayer->port);
 			
 			UAattempts = DEFAULT_MAX_ATTEMPTS;
@@ -443,7 +443,7 @@ int llclose(int fd) {
 				UAattempts--;
 			}
 			if(remaining==0) {
-                if(DEBUG_LINK)
+                if(LLayer->debugMode)
                     printf("UA_COMMAND sent!\n");
             }
 			else
@@ -520,7 +520,7 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
 		    else if(memcmp(UA_ACK_RECEIVED, POSSIBLE_REJ, 5) == 0) {
 		        validAnswer = FALSE;
                 
-                if(DEBUG_LINK) {
+                if(LLayer->debugMode) {
                     if(attempts > 1)
                         printf("Received REJ response. Sending same frame again\n");
                     else
@@ -530,7 +530,7 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
                 LLayer->numReceivedREJ++;
             }
 		    else {
-                if(DEBUG_LINK) {
+                if(LLayer->debugMode) {
                     if(attempts > 1)
                         printf("Received invalid response. Sending same frame again\n");
                     else
@@ -541,7 +541,7 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
 		}
 		else
 		{
-            if(DEBUG_LINK) {
+            if(LLayer->debugMode) {
                 if(attempts > 1)
                     printf("Couldn't receive a possible response. Sending same frame again\n");
                 else
@@ -557,7 +557,7 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
     
 	if(validAnswer)
 	{
-        if(DEBUG_LINK)
+        if(LLayer->debugMode)
             printf("Received a valid response.\n");
 		LLayer->sequenceNumber = (LLayer->sequenceNumber + 1) % 2; // 0+1%2=1, 1+1%2=0
         LLayer->totalDataSent += bytesWritten;

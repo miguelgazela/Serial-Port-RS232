@@ -41,7 +41,7 @@ void usage() {
 int main(int argc, char* argv[]) {
     unsigned int functionResult, fileblocksize = REGULAR_SIZE_DATAFIELD;
     unsigned int maxRetransmissions = DEFAULT_MAX_ATTEMPTS, timeoutTime = DEFAULT_TIMEOUT;
-    int baudrate = -1, hasFilename = FALSE, hasPortname = FALSE, tempArgc = argc;
+    int baudrate = -1, hasFilename = FALSE, hasPortname = FALSE, tempArgc = argc, DEBUG_LINK = FALSE;
     char *filename, *portname;
     
     /* creating the application layer */
@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
                     printf("The baudrate is invalid. The default value will be used (%d).\n",DEFAULT_BAUDRATE);
                 break;
             case 'd': { // DEBUG MODE
-                DEBUG_APP = TRUE;
+                app->debugMode = TRUE;
                 DEBUG_LINK = TRUE;
             }
                 break;
@@ -136,6 +136,7 @@ int main(int argc, char* argv[]) {
         
         /* create the link layer */
         createNewLinkLayerOptions(portname, baudrate, maxRetransmissions, timeoutTime);
+        LLayer->debugMode = DEBUG_LINK;
         
         char* str = calculateSize(app->originalFileSize);
         printf("\nSending file '%s' with size: %s\n", app->filename, str);

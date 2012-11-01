@@ -32,6 +32,7 @@ applicationLayer* getNewApplicationLayer() {
         exit(-1);
     }
     
+    appPtr->debugMode = FALSE;
     return appPtr;
 }
 
@@ -77,7 +78,7 @@ int sendFile(applicationLayer* app) {
     /* send start control package */
     setControlPackage(app);
     
-    if(DEBUG_APP)
+    if(app->debugMode)
         printf("\nSending package control (START)\n");
     
     result = llwrite(app->fileDescriptor, (unsigned char*)&app->ctrlPkg, sizeof(controlPackage));
@@ -92,7 +93,7 @@ int sendFile(applicationLayer* app) {
         
         while (remainingFileBytes > 0) { /* while there's still data to send */
             
-            if(!DEBUG_APP) {
+            if(!app->debugMode) {
                 if(app->ctrlPkg.V_Pkg < 50)
                     loadBar(app->packetsSent, app->ctrlPkg.V_Pkg, app->ctrlPkg.V_Pkg, 70);
                 else
@@ -135,7 +136,7 @@ int sendFile(applicationLayer* app) {
             fileData->C = C_DATA;
             fileData->N = (unsigned char)app->packetsSent % 255;
             
-            if(DEBUG_APP)
+            if(app->debugMode)
                 printf("\nSending package nº %lld\nRemaining bytes to be sent: %lld\n", app->packetsSent+1, remainingFileBytes);
             
             result = llwrite(app->fileDescriptor, (unsigned char*)fileData, sentBytes);
@@ -151,7 +152,7 @@ int sendFile(applicationLayer* app) {
         if(result >= 0) { // if all packages have been sent, send end control package
             app->ctrlPkg.C = C_END;
             
-            if(DEBUG_APP)
+            if(app->debugMode)
                 printf("Sending package control (END)\n");
             
             result = llwrite(app->fileDescriptor, (unsigned char*)&app->ctrlPkg, sizeof(controlPackage));
@@ -191,7 +192,7 @@ void setControlPackage(applicationLayer* app) {
     else
         app->ctrlPkg.V_Pkg = (unsigned long long int)ceil((double)app->originalFileSize/app->fileblocksize);
     
-    if(DEBUG_APP) {
+    if(app->debugMode) {
         printf("Setting Control Package\n");
         printf("t_size: %d\tl_size: %d\tv_size: %lld\nt_name: %d\tl_name: %d\tv_name: %s\nt_pkg: %d\tl_pkg: %d\tv_pkg: %lld\n",
            app->ctrlPkg.T_Size, app->ctrlPkg.L_Size, app->ctrlPkg.V_Size, app->ctrlPkg.T_Name, app->ctrlPkg.L_Name,

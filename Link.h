@@ -43,6 +43,7 @@ typedef struct {
     unsigned long long int numReceivedREJ;
     unsigned long long int numRetransmittedFrames;
     unsigned long long int totalDataSent;
+    int debugMode;
 } linkLayer;
 
 linkLayer* LLayer;
