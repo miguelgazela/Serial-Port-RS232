@@ -141,9 +141,7 @@ int main(int argc, char* argv[]) {
         char* str = calculateSize(app->originalFileSize);
         printf("\nSending file '%s' with size: %s\n", app->filename, str);
         
-        functionResult = sendFile(app);
-        
-        printf("FUNCTION_RESULT = %d\n", functionResult);
+        functionResult = sendFile(app); 
         
         str = calculateSize(LLayer->totalDataSent);
         printf("\nTotal data sent (including package and frame headers): %s\n", str);
