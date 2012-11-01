@@ -169,8 +169,6 @@ int sendFile(applicationLayer* app) {
     if(llclose(app->fileDescriptor) < 0)
         printf("Error closing port!\n");
     
-    printf("RESULT = %d\n", result);
-    
     return result;
 }
 
