@@ -496,7 +496,8 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
     while(validAnswer==FALSE && attempts>0)
 	{
 		//SENDING FRAME
-        printf("Sending New Frame - Sequence Number: %d\n", LLayer->sequenceNumber);
+        if(LLayer->debugMode)
+            printf("Sending New Frame - Sequence Number: %d\n", LLayer->sequenceNumber);
         
 		bytesWritten = write(fd, frameToSend, sizeof(dataFrame) + frameToSend->extraPackageFieldSize);
         
@@ -508,8 +509,9 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
 		}
         
 		//CHECKING ANSWER
+        if(LLayer->debugMode)
+            printf("Reading Response\n");
         
-        printf("Reading Response\n");
 		answer_result = llread(fd,UA_ACK_RECEIVED,5);
 
 		if(answer_result == 5)
