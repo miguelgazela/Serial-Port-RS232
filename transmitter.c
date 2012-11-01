@@ -134,12 +134,12 @@ int main(int argc, char* argv[]) {
         functionResult = sendFile(app);
         
         str = calculateSize(LLayer->totalDataSent);
-        printf("Total data sent (including package and frame headers): %s\n", str);
+        printf("\nTotal data sent (including package and frame headers): %s\n", str);
         
         str = calculateSize(LLayer->totalDataSent - app->originalFileSize);
         printf("Extra data sent (not file data): %s\n", str);
         
-        printf("Total packages sent: %lld of %lld\n", app->packetsSent, app->ctrlPkg.V_Pkg);
+        printf("Total packages sent: %lld of %lld\n", app->packetsSent, app->ctrlPkg.V_Pkg+2);
         printf("Number of timeout occurrences: %ld\n", LLayer->numTimeouts);
         printf("Number of received REJ responses: %lld\n", LLayer->numReceivedREJ);
         printf("Number of retransmitted frames: %lld\n", LLayer->numRetransmittedFrames);

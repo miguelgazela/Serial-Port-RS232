@@ -263,7 +263,7 @@ int llopen() {
     }
     
     if(DEBUG_LINK)
-        printf("Opening serial port %s\n", LLayer->port);
+        printf("\nOpening serial port %s\n", LLayer->port);
     
     do {
 		setAttempts = LLayer->numMaxTransmissions;
@@ -334,7 +334,7 @@ int llopen() {
 		{
 			validResponse = TRUE;
             if(DEBUG_LINK)
-                printf("Port %s is open!\n", LLayer->port);
+                printf("Port %s is open!\n\n", LLayer->port);
 		}
 		else
 			attempts--;
@@ -559,6 +559,8 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
     
 	if(validAnswer)
 	{
+        if(DEBUG_LINK)
+            printf("Received a valid response.\n")
 		LLayer->sequenceNumber = (LLayer->sequenceNumber + 1) % 2; // 0+1%2=1, 1+1%2=0
         LLayer->totalDataSent += bytesWritten;
 		return length;

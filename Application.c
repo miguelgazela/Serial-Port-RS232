@@ -138,7 +138,7 @@ int sendFile(applicationLayer* app) {
             fileData->N = (unsigned char)app->packetsSent % 255;
             
             if(DEBUG_APP)
-                printf("Sending package nº %lld\nRemaining bytes to be sent: %lld\n", app->packetsSent+1, remainingFileBytes);
+                printf("\nSending package nº %lld\nRemaining bytes to be sent: %lld\n", app->packetsSent+1, remainingFileBytes);
             
             result = llwrite(app->fileDescriptor, (unsigned char*)fileData, sentBytes);
             
