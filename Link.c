@@ -46,6 +46,7 @@ void createNewLinkLayerOptions(char* portname, int baudrate, unsigned int numMax
     printf("Max number of retransmissions: %d\n", LLayer->numMaxTransmissions);
     printf("Timeout time: %d\n", LLayer->timeout);
     printf("Baudrate: %d\n", LLayer->baudrate);
+    printf("-----------------------------\n");
 }
 
 

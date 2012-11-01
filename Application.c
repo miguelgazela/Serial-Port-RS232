@@ -141,8 +141,10 @@ int sendFile(applicationLayer* app) {
             
             result = llwrite(app->fileDescriptor, (unsigned char*)fileData, sentBytes);
             
-            if(result < 0)
+            if(result < 0) {
                 printf("Error sending data package.\n");
+                break;
+            }
             else
                 app->packetsSent++;
                 
