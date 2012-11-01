@@ -7,6 +7,8 @@
 #include "Link.h"
 #include <math.h>
 
+int DEBUG_APP = FALSE;
+
 typedef struct {
 	unsigned char C, T_Size, L_Size;
 	unsigned long long int V_Size;

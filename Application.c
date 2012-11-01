@@ -1,7 +1,5 @@
 #include "Application.h"
 
-int DEBUG_APP = TRUE;
-
 inline void loadBar(unsigned long long int completed, unsigned long long int total, int r, int w)
 {
     if ( completed % (total/r) != 0 ) // Only update r times.

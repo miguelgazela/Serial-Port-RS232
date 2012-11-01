@@ -26,6 +26,8 @@
 #define REJ 0x01
 #define ESC 0x7D
 
+int DEBUG_LINK = FALSE;
+
 typedef struct {
     unsigned char F_BEG, df_A, df_C;
     unsigned int extraPackageFieldSize; /* in bytes */

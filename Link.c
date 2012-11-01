@@ -1,7 +1,5 @@
 #include "Link.h"
 
-int DEBUG_LINK = TRUE;
-
 unsigned char SET_COMMAND[] = {FLAG, A, C_SET, (A ^ C_SET), FLAG};
 unsigned char UA_COMMAND[] = {FLAG, A, C_UA, (A ^ C_UA), FLAG};
 unsigned char DISC_COMMAND[] = {FLAG, A, C_DISC, (A ^ C_DISC), FLAG};
@@ -560,7 +558,7 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
 	if(validAnswer)
 	{
         if(DEBUG_LINK)
-            printf("Received a valid response.\n")
+            printf("Received a valid response.\n");
 		LLayer->sequenceNumber = (LLayer->sequenceNumber + 1) % 2; // 0+1%2=1, 1+1%2=0
         LLayer->totalDataSent += bytesWritten;
 		return length;

@@ -87,6 +87,11 @@ int main(int argc, char* argv[]) {
                 if((baudrate = atoi(&argv[1][2])) == 0)
                     printf("The baudrate is invalid. The default value will be used (%d).\n",DEFAULT_BAUDRATE);
                 break;
+            case 'd': { // DEBUG MODE
+                DEBUG_APP = TRUE;
+                DEBUG_LINK = TRUE;
+            }
+                break;
                 
             default:
                 printf("Wrong Argument: %s\n", &argv[1][2]);
@@ -97,7 +102,11 @@ int main(int argc, char* argv[]) {
         --tempArgc;
     }
 
-    if(hasFilename == FALSE) {
+    if(hasFilename == FALSE && hasPortname == FALSE) {
+        printf("The program needs at least the name of the file to send, and the serial port to use.\n");
+        return(-1);
+    }
+    else if(hasFilename == FALSE) {
         printf("The program needs the name of the file to send.\n");
         return(-1);
     }
