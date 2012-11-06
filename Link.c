@@ -508,11 +508,11 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
         
     if(LLayer->sequenceNumber == 0) {
         memcpy(UA_ACK_EXPECTED, UA_ACK_1, 5); /* waits for the next frame */
-        memcpy(POSSIBLE_REJ, UA_REJ_0, 5);
+        memcpy(POSSIBLE_REJ, UA_REJ_1, 5);
     }
 	else {
         memcpy(UA_ACK_EXPECTED, UA_ACK_0, 5);
-        memcpy(POSSIBLE_REJ, UA_REJ_1, 5);
+        memcpy(POSSIBLE_REJ, UA_REJ_0, 5);
     }
     
     prepareFrameToSend(applicationPackage, length);
