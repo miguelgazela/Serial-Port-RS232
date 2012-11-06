@@ -535,7 +535,6 @@ int llwrite(int fd, unsigned char* applicationPackage, int length) {
         
 		if(bytesWritten < sizeof(dataFrame) + frameToSend->extraPackageFieldSize)
 		{
-            printf("\n\n\nNAO DEVIA CHEGAR AQUI!!!!!!!!!!!!\n\n\n"); // TODO REMOVER!!!
 			validAnswer = FALSE;
 			attempts--;
 			continue;

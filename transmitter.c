@@ -36,6 +36,8 @@ void usage() {
     printf("\t-r<maxRetransmissions>\n");
     printf("\t-t<timeoutTime>\n");
     printf("\t-b<baudrate>\n");
+    printf("\t-d (debug mode ON)\n");
+    printf("\t-w<wrongBCC2rate>\n");
 }
 
 int main(int argc, char* argv[]) {
