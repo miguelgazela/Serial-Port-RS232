@@ -1,4 +1,6 @@
 Serial-Port-RS232
 =================
 
-Program that sends a file from one computer to another using a RS232 serial port.
+Sends a file from one computer to another using a RS232 serial port.
+
+It has a Layered Architecture.
